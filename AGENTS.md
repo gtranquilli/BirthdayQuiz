@@ -41,7 +41,7 @@ Al 4 agosto 2026 il repository non contiene ancora lo scaffold dell'applicazione
 - Usare Supabase Realtime con Postgres Changes; non usare Presence come contatore autorevole.
 - La `service_role` resta esclusivamente server-side e non usa mai prefissi `NEXT_PUBLIC_*`.
 - Conservare soluzioni sorgente e di sessione in tabelle senza lettura pubblica.
-- Non esporre `responses` tramite Realtime. Prima del reveal ogni partecipante legge solo la propria risposta; dopo il reveal un endpoint controllato restituisce solo le associazioni avatar-opzione necessarie.
+- Non esporre `votes` tramite Realtime. Prima del reveal ogni partecipante legge solo la propria risposta; dopo il reveal un endpoint controllato restituisce solo le associazioni avatar-opzione necessarie.
 - Applicare RLS a tutte le tabelle esposte. Join e voto passano da funzioni SQL che validano identità, fase, sessione, domanda e opzione.
 - Le operazioni host passano da Route Handler server-side protetti da sessione host HttpOnly.
 - Rendere idempotenti rivelazione e assegnazione dei punti.

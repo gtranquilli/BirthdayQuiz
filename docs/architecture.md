@@ -107,7 +107,7 @@ Le chiavi interne sono UUID e i timestamp sono `timestamptz` UTC.
 | `title` | `text` | Titolo pubblico |
 | `created_at` | `timestamptz` | Default `now()` |
 
-### `categories`
+### `quiz_categories`
 
 | Colonna | Tipo | Note |
 | --- | --- | --- |
@@ -216,7 +216,7 @@ Vincoli: `max_players > 0`, contatori non negativi, `participant_count <= max_pl
 
 Vincolo univoco `(session_id, position)`. Conserva la configurazione realmente confermata, distinta dal preset sorgente.
 
-### `session_questions`
+### `game_questions`
 
 | Colonna | Tipo | Note |
 | --- | --- | --- |
@@ -251,7 +251,7 @@ Vincolo univoco `(session_id, position)`. La sessione usa sempre questi campi co
 
 La transazione di creazione verifica inoltre che ogni `session_question` abbia esattamente quattro `session_answer_options`, una sola soluzione coerente e un `position` univoco. `current_session_question_id` deve riferirsi a una domanda della stessa sessione.
 
-### `participants`
+### `players`
 
 | Colonna | Tipo | Note |
 | --- | --- | --- |
@@ -266,7 +266,7 @@ La transazione di creazione verifica inoltre che ogni `session_question` abbia e
 
 Vincoli univoci `(session_id, user_id)` e `(session_id, nickname_normalized)`. `avatar_key` permette un avatar deterministico da risorse predefinite, senza upload o profili.
 
-### `responses`
+### `votes`
 
 | Colonna | Tipo | Note |
 | --- | --- | --- |
@@ -279,7 +279,7 @@ Vincoli univoci `(session_id, user_id)` e `(session_id, nickname_normalized)`. `
 | `is_correct` | `boolean` nullable | Valorizzato al reveal |
 | `points_awarded` | `integer` nullable | Guardia di idempotenza |
 
-Vincolo univoco `(session_id, session_question_id, participant_id)`. I contatori denormalizzati su `game_sessions` evitano di esporre `responses` a Realtime.
+Vincolo univoco `(session_id, session_question_id, participant_id)`. I contatori denormalizzati su `game_sessions` evitano di esporre `votes` a Realtime.
 
 ## 7. Operazioni atomiche
 
@@ -318,8 +318,8 @@ Ogni comando verifica la fase nel database. Retry o fase incompatibile non ripet
 Policy minime:
 
 - tabelle soluzione sorgente e di sessione: nessuna lettura pubblica;
-- `responses`: ogni partecipante legge solo la propria risposta; scrittura diretta disabilitata in favore della funzione validata;
-- `participants`: una proiezione sicura rende leggibili nickname, avatar e punteggi dove servono alla lobby/classifica; `user_id` e associazioni con le risposte non sono pubblici;
+- `votes`: ogni partecipante legge solo la propria risposta; scrittura diretta disabilitata in favore della funzione validata;
+- `players`: una proiezione sicura rende leggibili nickname, avatar e punteggi dove servono alla lobby/classifica; `user_id` e associazioni con le risposte non sono pubblici;
 - contenuti, preset e sessioni: lettura dei soli campi non sensibili; mutazioni server-side.
 
 `GET /api/game-sessions/[code]/snapshot` restituisce fase, conteggi e contenuto della domanda corrente. Per un partecipante autenticato include la propria scelta. Prima del reveal non include mai soluzione, correttezza, distribuzione o associazioni partecipante-opzione.
@@ -335,7 +335,7 @@ Questo è l'unico confine pubblico che rivela la relazione richiesta. Non espone
 
 ## 9. Realtime e recovery
 
-Host, display e partecipanti sottoscrivono la riga `game_sessions` filtrata per ID. La classifica può essere riletta al cambio fase. Non si sottoscrivono pubblicamente `responses` e non si usa Presence come contatore.
+Host, display e partecipanti sottoscrivono la riga `game_sessions` filtrata per ID. La classifica può essere riletta al cambio fase. Non si sottoscrivono pubblicamente `votes` e non si usa Presence come contatore.
 
 Sequenza consigliata:
 
@@ -380,6 +380,6 @@ L'MVP usa `HOST_ACCESS_PASSWORD` e un cookie firmato con `HOST_SESSION_SECRET`. 
 | Preset chiede troppe domande | Validazione di disponibilità prima dell'estrazione |
 | Capienza superata da join concorrenti | Blocco riga e controllo atomico su `max_players` |
 | Reveal ripetuto | Fase condizionale e `points_awarded` idempotente |
-| Voti visibili in anticipo | RLS, nessun Realtime su `responses`, endpoint risultati vincolato alla fase |
+| Voti visibili in anticipo | RLS, nessun Realtime su `votes`, endpoint risultati vincolato alla fase |
 | Realtime perde un evento | Snapshot iniziale e refetch alla riconnessione |
 | Scope eccessivo | Contenuti solo seed, nessun editor, marketplace o account utente |

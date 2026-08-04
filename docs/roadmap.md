@@ -36,7 +36,7 @@ Verifica: shell delle rotte previste, lint, typecheck e build funzionano.
 
 ### 2. Schema contenuti e preset
 
-- [ ] Creare `quizzes`, `categories`, `questions`, `answer_options` e `question_solutions`.
+- [ ] Creare `quizzes`, `quiz_categories`, `questions`, `answer_options` e `question_solutions`.
 - [ ] Creare `quiz_presets` e `preset_category_rules`.
 - [ ] Vincolare categoria/quiz, punteggio positivo, quattro risposte e una soluzione coerente.
 - [ ] Attivare RLS e impedire lettura pubblica delle soluzioni.
