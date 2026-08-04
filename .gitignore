@@ -29,6 +29,7 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # Environment files
+.env.local
 .env*
 !.env.example
 
@@ -38,4 +39,3 @@ yarn-error.log*
 # TypeScript and Next.js generated files
 *.tsbuildinfo
 next-env.d.ts
-
