@@ -63,7 +63,7 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 ### Browser partecipante
 
 - crea o ripristina la sessione anonima;
-- invoca `join_game_session` e `submit_answer`;
+- invoca `join_game_session` e `submit_vote`;
 - carica lo snapshot e ascolta la sessione via Realtime;
 - mostra solo la propria scelta prima del reveal;
 - non calcola punteggi o correttezza autorevoli.
@@ -299,7 +299,7 @@ Il Route Handler host, dopo la conferma della capienza, invoca un'operazione dat
 
 Normalizza gli input, blocca la sessione, verifica `lobby` e `participant_count < max_players`, crea o recupera il partecipante di `auth.uid()`, genera un avatar stabile e incrementa il conteggio solo al primo inserimento.
 
-### `submit_answer(p_session_id, p_session_question_id, p_session_option_id)`
+### `submit_vote(p_session_id, p_session_question_id, p_session_option_id)`
 
 Identifica il partecipante tramite `auth.uid()`, verifica fase e domanda corrente, controlla che l'opzione appartenga alla copia di sessione, esegue insert/upsert e incrementa `voted_count` soltanto al primo voto. Non legge né restituisce la soluzione.
 

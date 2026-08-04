@@ -98,7 +98,7 @@ Verifica: host, display e telefoni ricostruiscono lo stato dopo refresh ed event
 
 - [ ] Collegare `start` e `next` alle copie ordinate di sessione.
 - [ ] Mostrare sempre le quattro risposte nell'ordine congelato.
-- [ ] Implementare `submit_answer` con modifica consentita solo in `voting_open`.
+- [ ] Implementare `submit_vote` con modifica consentita solo in `voting_open`.
 - [ ] Incrementare `voted_count` soltanto al primo voto.
 - [ ] Mostrare sul display solo `voted_count / participant_count` come dato sui voti.
 
