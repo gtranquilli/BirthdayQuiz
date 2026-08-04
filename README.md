@@ -1,71 +1,73 @@
-# BirthdayQuiz
+# Quiz Engine multiplayer
 
-BirthdayQuiz sarà una web app per gestire un quiz di compleanno dal vivo. Il presentatore controlla la partita, una pagina dedicata viene mostrata sullo schermo principale e i partecipanti rispondono dal browser del proprio smartphone usando un codice stanza e un nickname.
+Questo repository, nato come BirthdayQuiz, descrive un Quiz Engine riutilizzabile per partite multiplayer dal vivo. Un host configura e controlla la sessione, una pagina separata viene proiettata sul display principale e i partecipanti votano dal browser dello smartphone con codice sessione e nickname.
+
+“Compleanno di Giorgio” è soltanto il primo quiz configurato. La logica applicativa deve poter eseguire altri quiz caricati con lo stesso modello, senza modifiche specifiche al motore.
 
 ## Stato del progetto
 
-Il progetto è attualmente nella fase di progettazione. Al 3 agosto 2026 il repository iniziale conteneva soltanto la directory Git: non sono ancora presenti scaffold Next.js, dipendenze, migrazioni Supabase o codice applicativo.
+Al 4 agosto 2026 il repository contiene soltanto la documentazione di prodotto e architettura. Non sono ancora presenti scaffold Next.js, dipendenze, migrazioni Supabase o codice applicativo.
 
-Questa prima attività definisce l'MVP e il piano di lavoro senza implementare l'applicazione.
+La scadenza dell'MVP è il 6 agosto 2026. La roadmap concentra implementazione e collaudo sui soli elementi indispensabili al flusso end-to-end.
 
-## MVP proposto
+## MVP
 
-- Quiz già preparato in Supabase, con più domande e risposte multiple.
-- Creazione di una stanza protetta da accesso host.
-- Accesso dei partecipanti con codice e nickname, senza email.
-- Lobby con conteggio dei partecipanti.
-- Apertura della domanda e voto da smartphone.
-- Conteggio aggregato `voti ricevuti / partecipanti` sul display, senza rivelare identità o scelte.
-- Comandi distinti per chiudere il voto e rivelare la risposta.
-- Breve animazione di rivelazione, risultati aggregati, punti e classifica.
-- Avanzamento attraverso tutte le domande e classifica finale.
-- Ripristino dello stato dopo refresh o una breve disconnessione.
+- Contenuti gerarchici: quiz → categorie → domande → risposte.
+- Esattamente quattro risposte e una sola corretta per domanda.
+- Punteggio positivo configurabile per domanda.
+- Quiz e preset caricati tramite seed; “Compleanno di Giorgio” è il primo dataset.
+- Preset con quantità per categoria, modificabili dall'host per la nuova sessione.
+- “Numero massimo giocatori” obbligatorio, senza valore predefinito e con conferma esplicita.
+- Sessione separata dal quiz, con configurazione, domande, risposte, soluzioni e ordine congelati alla creazione.
+- Accesso partecipanti senza email tramite Supabase Auth anonimo.
+- Voto anonimo fino al reveal: durante apertura e chiusura sul display sono visibili solo domanda, quattro risposte e conteggio dei votanti.
+- Reveal separato in stile Among Us: risposta corretta e avatar accanto alle risposte scelte, poi punti e classifica.
+- Recovery dello stato dopo refresh o breve disconnessione.
 
-Per rispettare i tre giorni disponibili, l'MVP non comprende editor di quiz, timer, squadre, domande con immagini, speed bonus, chat, account partecipante o storico delle partite.
+Restano fuori scope editor completo, marketplace, gestione utenti, creazione pubblica dei quiz, timer, squadre, chat, media, speed bonus, moderazione avanzata e storico partite.
+
+## Flusso della sessione
+
+1. L'host sceglie quiz e preset e adatta i conteggi per categoria.
+2. Inserisce il massimo giocatori e conferma la creazione.
+3. Il sistema estrae e congela domande, quattro risposte, soluzioni, punteggi e ordine.
+4. I partecipanti entrano in lobby con nickname e avatar.
+5. L'host apre il voto, lo chiude e poi attiva separatamente il reveal.
+6. Dopo ogni reveal può aprire la domanda successiva o terminare con la classifica finale.
+
+Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `finished`.
 
 ## Interfacce previste
 
 | Rotta | Utente | Responsabilità |
 | --- | --- | --- |
-| `/` | Partecipante | Inserimento di codice stanza e nickname |
+| `/` | Partecipante | Inserimento di codice sessione e nickname |
 | `/play/[code]` | Partecipante | Attesa, voto, esito personale e classifica |
-| `/host` | Presentatore | Accesso host e creazione stanza |
-| `/host/[code]` | Presentatore | Controlli della partita e monitoraggio |
-| `/display/[code]` | Pubblico | Codice stanza, domanda, conteggio voti, rivelazione e classifica |
-
-Lo schermo pubblico e il pannello host sono separati per evitare che controlli e informazioni operative finiscano nella proiezione. Possono essere aperti in due finestre dello stesso computer oppure su due dispositivi.
+| `/host` | Host | Accesso, configurazione e creazione sessione |
+| `/host/[code]` | Host | Controlli della partita e monitoraggio |
+| `/display/[code]` | Pubblico | Lobby, domanda, conteggio, reveal e classifica |
 
 ## Architettura in breve
 
-- Next.js App Router e TypeScript per pagine e API server-side.
-- Tailwind CSS per un'interfaccia responsive senza un component framework aggiuntivo.
-- Supabase Postgres come fonte di verità.
-- Supabase Auth anonimo per identificare il browser di ogni partecipante senza email.
-- Supabase Realtime per propagare fase, conteggi e classifica.
-- Row Level Security e funzioni SQL per impedire voti fuori fase e accessi ai dati privati.
-- Vercel per il deploy; le operazioni host privilegiate restano server-side.
-
-I dettagli, inclusi modello dati e confini di sicurezza, sono in [docs/architecture.md](docs/architecture.md).
+- Next.js App Router, TypeScript strict e Tailwind CSS.
+- Supabase Postgres come fonte di verità e Supabase Auth anonimo per i partecipanti.
+- Supabase Realtime per fase e conteggi persistenti; snapshot per recovery.
+- RLS e funzioni SQL transazionali per capienza, voto, transizioni e scoring.
+- Soluzioni e relazioni giocatore-risposta protette fino a `answer_revealed`.
+- Route Handler server-side protetti da sessione host HttpOnly per le operazioni privilegiate.
+- Vercel per il deploy.
 
 ## Documentazione
 
 - [Requisiti e criteri di accettazione](docs/requirements.md)
 - [Architettura e modello Supabase](docs/architecture.md)
-- [Roadmap dei tre giorni](docs/roadmap.md)
-- [Regole operative per chi sviluppa](AGENTS.md)
+- [Roadmap al 6 agosto 2026](docs/roadmap.md)
+- [Regole operative per gli agenti](AGENTS.md)
 
-## Prima di iniziare a implementare
+## Prima dell'implementazione
 
-Occorre confermare almeno:
-
-1. numero massimo atteso di partecipanti;
-2. contenuto definitivo del quiz e numero di opzioni per domanda;
-3. regola di punteggio e spareggio;
-4. modalità fisica di utilizzo di pannello host e display;
-5. significato esatto del vincolo sul display durante il voto, cioè se domanda e testi delle opzioni debbano restare visibili.
-
-La baseline consigliata e le alternative sono elencate in [docs/roadmap.md](docs/roadmap.md#decisioni-da-confermare-prima-dello-sviluppo).
+Occorre predisporre in formato strutturato il quiz di Giorgio: categorie, domande, quattro risposte, soluzione e punteggio di ciascuna domanda, più almeno un preset valido. Non è prevista una UI per inserire questi dati nell'MVP.
 
 ## Avvio locale
 
-Non ancora disponibile: il repository non contiene codice applicativo. I comandi di installazione e avvio verranno aggiunti dopo la creazione dello scaffold, senza inventare script prima che esistano.
+Non ancora disponibile: il repository non contiene codice applicativo. I comandi verranno documentati dopo lo scaffold, senza anticipare script o dipendenze inesistenti.

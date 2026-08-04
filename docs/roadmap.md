@@ -1,219 +1,202 @@
-# Roadmap MVP — tre giorni
+# Quiz Engine — roadmap MVP al 6 agosto 2026
 
 ## Principio di esecuzione
 
-La priorità è completare un flusso verticale funzionante prima di rifinire l'aspetto. Ogni attività deve lasciare il progetto in uno stato verificabile. Funzionalità fuori scope non entrano nei tre giorni finché i criteri end-to-end non sono soddisfatti.
+La finestra di implementazione e collaudo è il 4–6 agosto 2026. La priorità è consegnare un flusso verticale affidabile: configurazione host → sessione congelata → ingresso → voto → chiusura → reveal con avatar → punteggio → domanda successiva → classifica finale.
 
-## Decisioni da confermare prima dello sviluppo
+Le nuove astrazioni servono a rendere riutilizzabile il motore, non ad ampliare il prodotto. Contenuti e preset arrivano solo da seed; editor, marketplace, gestione utenti e creazione pubblica restano fuori dai tre giorni.
 
-Queste decisioni influenzano schema, UX o collaudo e vanno chiuse prima di implementare le parti indicate.
+## Decisioni funzionali chiuse
 
-| # | Decisione indispensabile | Baseline consigliata | Impatto se diversa |
-| --- | --- | --- | --- |
-| D1 | Quanti partecipanti simultanei sono attesi? | 30 attesi, limite 50 | Determina test di carico, capienza e affidabilità richiesta |
-| D2 | Quante domande e quante opzioni? Il contenuto è definitivo? | 8–12 domande, 2–6 opzioni, una corretta | Serve per seed, layout mobile e durata prova |
-| D3 | Come si assegnano punti e si gestiscono i pari merito? | 100/0, nessun speed bonus, pari merito | Cambia transazione di scoring e classifica |
-| D4 | Host e display saranno due finestre dello stesso computer, due monitor o due dispositivi? | Pannello su laptop, display in finestra/monitor separato | Determina il flusso operativo e il test dell'evento |
-| D5 | Durante il voto il display mantiene domanda e opzioni? | Sì; l'unico dato sui voti è il conteggio aggregato | Se “soltanto il conteggio” è letterale, cambia il layout principale |
-| D6 | Si può cambiare risposta prima della chiusura? | Sì | Cambia RPC, testi di conferma e test del contatore |
-| D7 | Sono ammessi ingressi dopo l'avvio? | No; solo riconnessione di chi era già entrato | Late join richiede regole per denominatore e domande perse |
-| D8 | Il deploy può essere protetto da una sola password host condivisa? | Sì, segreto in Vercel e cookie firmato | Account multipli aumentano notevolmente lo scope |
+| Tema | Decisione MVP |
+| --- | --- |
+| Prodotto | Quiz Engine generico; “Compleanno di Giorgio” è il primo quiz seed |
+| Contenuti | Quiz → categorie → domande → quattro risposte, una corretta |
+| Punteggio | Valore positivo configurato per domanda nel seed; nessun bonus velocità |
+| Composizione | Preset con conteggi per categoria, modificabili solo per la nuova sessione |
+| Sessione | Configurazione, domande, risposte, soluzioni, punteggi e ordine congelati alla creazione |
+| Capienza | Valore obbligatorio inserito dall'host, senza default, confermato prima della creazione |
+| Privacy | Prima del reveal solo conteggio aggregato; dopo il reveal avatar sulle risposte scelte |
+| Fasi | `lobby`, `voting_open`, `voting_closed`, `answer_revealed`, `finished` |
+| Contenuti MVP | Solo migrazioni e seed, nessuna UI di authoring |
 
-È inoltre necessario ricevere entro il primo giorno titolo, domande, opzioni e soluzioni definitive. Correzioni ai testi restano possibili prima dell'evento, ma il quiz non deve cambiare mentre una stanza è attiva.
+Prima di iniziare il seed definitivo servono i testi reali del quiz di Giorgio, le categorie, le quattro risposte e la soluzione di ogni domanda, il relativo punteggio e almeno un preset valido. Questa è preparazione dei dati, non una decisione di prodotto ancora aperta.
 
-## Giorno 1 — Fondamenta e primo collegamento
+## 4 agosto — Fondamenta e creazione sessione
 
-Obiettivo: un partecipante entra in una stanza reale e tutte le superfici leggono lo stesso stato Supabase.
+Obiettivo: modellare il Quiz Engine e creare una sessione immutabile da un preset.
 
-### 1. Confermare la baseline
+### 1. Scaffold minimo
 
-- [ ] Chiudere D1–D8 o accettare esplicitamente i default.
-- [ ] Raccogliere il quiz definitivo in formato strutturato.
-- [ ] Definire URL/progetto Vercel e progetto Supabase da usare.
+- [ ] Inizializzare Next.js App Router con TypeScript strict e Tailwind.
+- [ ] Mantenere le dipendenze minime e aggiungere `.env.example` senza segreti.
+- [ ] Definire script reali per sviluppo, lint, typecheck e build.
 
-Verifica: nessuna regola di dominio necessaria resta ambigua.
+Verifica: shell delle rotte previste, lint, typecheck e build funzionano.
 
-### 2. Creare lo scaffold minimo
+### 2. Schema contenuti e preset
 
-- [ ] Inizializzare Next.js App Router con TypeScript e Tailwind.
-- [ ] Abilitare TypeScript strict e mantenere le dipendenze iniziali minime.
-- [ ] Aggiungere `.env.example` senza valori segreti.
-- [ ] Definire script reali per dev, lint, typecheck e build.
+- [ ] Creare `quizzes`, `categories`, `questions`, `answer_options` e `question_solutions`.
+- [ ] Creare `quiz_presets` e `preset_category_rules`.
+- [ ] Vincolare categoria/quiz, punteggio positivo, quattro risposte e una soluzione coerente.
+- [ ] Attivare RLS e impedire lettura pubblica delle soluzioni.
 
-Verifica: home placeholder, lint, typecheck e build funzionano.
+Verifica: un quiz valido è riutilizzabile e un contenuto incompleto viene rifiutato prima dell'uso.
 
-### 3. Configurare Supabase
+### 3. Schema sessione e snapshot
 
-- [ ] Creare progetto e variabili locali.
-- [ ] Abilitare Auth anonimo.
-- [ ] Creare una migrazione con enum, tabelle, vincoli e indici.
-- [ ] Attivare RLS su ogni tabella.
-- [ ] Aggiungere policy minime e revocare scritture dirette non necessarie.
-- [ ] Abilitare Realtime soltanto sulle tabelle richieste.
+- [ ] Creare `game_sessions` con `max_players` obbligatorio e senza default.
+- [ ] Creare configurazione, domande, opzioni e soluzioni di sessione.
+- [ ] Creare partecipanti e risposte con vincoli univoci e contatori persistenti.
+- [ ] Implementare la macchina a stati invariata.
 
-Verifica: con la chiave anonima non si può leggere `question_solutions` né voti altrui.
+Verifica: una sessione non dipende dai contenuti live dopo la creazione.
 
-### 4. Caricare e validare il quiz
+### 4. Seed iniziale
 
-- [ ] Creare un seed idempotente con quiz, domande, opzioni e soluzioni.
-- [ ] Validare posizioni univoche, almeno due opzioni e una soluzione per domanda.
-- [ ] Documentare come rieseguire il seed in ambiente di sviluppo.
+- [ ] Caricare “Compleanno di Giorgio”, categorie e domande definitive.
+- [ ] Garantire quattro risposte, una soluzione e un punteggio per domanda.
+- [ ] Caricare almeno un preset, incluso “Compleanno classico” se coerente con i dati disponibili.
+- [ ] Rendere il seed idempotente e documentarne l'esecuzione.
 
-Verifica: il quiz completo è interrogabile senza esporre le soluzioni pubblicamente.
+Verifica: il quiz completo è interrogabile, mentre le soluzioni restano inaccessibili con chiave pubblica.
 
-### 5. Implementare il dominio database
+### 5. Configurazione host e creazione atomica
 
-- [ ] Creare `join_room` con normalizzazione, capienza e idempotenza.
-- [ ] Creare `submit_answer` con controlli di fase e coerenza.
-- [ ] Creare la funzione di transizione host con macchina a stati.
-- [ ] Rendere atomici contatori e scoring.
-- [ ] Testare manualmente casi validi e rifiuti direttamente contro Supabase.
+- [ ] Mostrare quiz, preset e conteggi per categoria modificabili in `/host`.
+- [ ] Lasciare vuoto “Numero massimo giocatori” e accettare solo interi positivi.
+- [ ] Mostrare “Creare una partita con massimo N giocatori?” prima della creazione.
+- [ ] Validare disponibilità per categoria, estrarre e ordinare le domande in transazione.
+- [ ] Copiare contenuti, quattro opzioni, soluzione e punteggio nella sessione.
 
-Verifica: concorrenza e retry non producono doppi partecipanti, doppi voti o doppi punti.
+Verifica: configurazioni impossibili non creano dati parziali; modifiche successive al quiz non cambiano la sessione.
 
-### 6. Costruire ingresso e lobby
+## 5 agosto — Motore multiplayer completo
 
-- [ ] Implementare client Supabase browser/server con confini chiari.
-- [ ] Creare `/` con codice e nickname, mobile-first.
-- [ ] Creare o recuperare la sessione anonima.
-- [ ] Collegare `join_room` e navigare a `/play/[code]`.
-- [ ] Mostrare attesa e messaggi per gli errori previsti.
+Obiettivo: giocare tutte le domande con le tre superfici, anche con UI essenziale.
 
-Verifica: due sessioni browser entrano, un refresh non duplica il partecipante e un nickname duplicato viene rifiutato.
+### 6. Accesso e lobby
 
-## Giorno 2 — Motore completo della partita
+- [ ] Proteggere le operazioni host con password ambiente e cookie firmato.
+- [ ] Creare o ripristinare Auth anonimo nel browser partecipante.
+- [ ] Implementare `join_game_session` con nickname, fase e capienza atomica.
+- [ ] Assegnare e conservare un avatar visuale stabile.
+- [ ] Completare `/`, `/play/[code]`, `/host/[code]` e `/display/[code]` per la lobby.
 
-Obiettivo: giocare tutte le domande dall'inizio alla classifica finale, anche con UI essenziale.
+Verifica: due sessioni browser entrano; refresh non duplica; il partecipante oltre capienza viene rifiutato.
 
-### 7. Proteggere e creare la stanza host
+### 7. Snapshot, Realtime e recovery
 
-- [ ] Implementare login host con password ambiente e cookie firmato.
-- [ ] Creare `POST /api/host/rooms`.
-- [ ] Implementare `/host` con selezione quiz e creazione stanza.
-- [ ] Impedire l'uso degli endpoint host senza sessione valida.
-
-Verifica: una sessione non autenticata riceve `401`; l'host crea una stanza in lobby.
-
-### 8. Creare le tre superfici live
-
-- [ ] Creare `/host/[code]` con fase, conteggi e singolo comando valido.
-- [ ] Creare `/display/[code]` read-only.
-- [ ] Completare gli stati di `/play/[code]`.
-- [ ] Implementare snapshot iniziale e tipi condivisi.
-
-Verifica: tutte le superfici rendono correttamente lobby e stanza inesistente.
-
-### 9. Collegare Realtime e recovery
-
-- [ ] Sottoscrivere la riga `rooms` filtrata.
-- [ ] Rifare lo snapshot su reconnessione e ritorno online.
+- [ ] Implementare snapshot iniziale dipendente da fase e identità.
+- [ ] Sottoscrivere soltanto i cambiamenti persistenti necessari.
+- [ ] Rifare lo snapshot a riconnessione e ritorno online.
 - [ ] Gestire loading, offline ed errore del canale.
-- [ ] Verificare che un evento perso non lasci una pagina in una fase obsoleta.
 
-Verifica: host, display e telefoni cambiano fase senza refresh; dopo refresh tornano allo stato corretto.
+Verifica: host, display e telefoni ricostruiscono lo stato dopo refresh ed eventi persi.
 
-### 10. Completare apertura e voto
+### 8. Apertura e voto anonimo
 
-- [ ] Collegare `start`/`next` alla domanda corretta.
-- [ ] Rendere opzioni e selezione sul telefono.
-- [ ] Collegare `submit_answer` con stato pending/success/error.
-- [ ] Aggiornare il contatore solo al primo voto.
-- [ ] Impedire scritture dopo chiusura anche con chiamata manuale.
+- [ ] Collegare `start` e `next` alle copie ordinate di sessione.
+- [ ] Mostrare sempre le quattro risposte nell'ordine congelato.
+- [ ] Implementare `submit_answer` con modifica consentita solo in `voting_open`.
+- [ ] Incrementare `voted_count` soltanto al primo voto.
+- [ ] Mostrare sul display solo `voted_count / participant_count` come dato sui voti.
 
-Verifica: modifica risposta, doppio tap e due schede dello stesso partecipante rispettano i vincoli.
+Verifica: nessun client pubblico ottiene soluzione, distribuzione o associazione giocatore-risposta.
 
-### 11. Completare chiusura, rivelazione e scoring
+### 9. Chiusura e reveal separati
 
-- [ ] Collegare i comandi `close` e `reveal` separati.
-- [ ] Implementare endpoint risultati con controllo fase.
-- [ ] Evidenziare la risposta corretta dopo la rivelazione.
-- [ ] Mostrare esito personale, punti, aggregati e classifica.
-- [ ] Verificare idempotenza su retry/doppio click.
+- [ ] Collegare i comandi host `close` e `reveal` come transizioni distinte.
+- [ ] Bloccare ogni voto dopo `close`, anche tramite chiamata manuale.
+- [ ] Rendere scoring e reveal atomici e idempotenti.
+- [ ] Dopo il reveal evidenziare la soluzione e mostrare gli avatar vicino alle risposte scelte.
+- [ ] Mostrare esito personale, punti configurati e classifica.
 
-Verifica: prima di `reveal` nessuna richiesta pubblica ottiene soluzione o distribuzione; dopo `reveal` i punteggi sono corretti una sola volta.
+Verifica: doppio reveal non duplica punti; le associazioni avatar-risposta diventano disponibili soltanto in `answer_revealed`.
 
-### 12. Completare ciclo e fine partita
+### 10. Ciclo completo e fine
 
-- [ ] Passare alla domanda seguente azzerando solo i voti correnti.
-- [ ] Conservare punteggi cumulativi.
-- [ ] Riconoscere l'ultima domanda e abilitare `finish`.
+- [ ] Passare alla domanda seguente azzerando solo il contatore corrente.
+- [ ] Conservare punteggi cumulativi e ordine di sessione.
+- [ ] Abilitare `finish` solo dopo il reveal dell'ultima domanda.
 - [ ] Mostrare la classifica finale su display e telefoni.
 
-Verifica: l'intero quiz può essere giocato senza interventi sul database.
+Verifica: la sessione completa non richiede interventi manuali sul database.
 
-## Giorno 3 — Robustezza, UX e deploy
+## 6 agosto — Sicurezza, collaudo e deploy
 
-Obiettivo: provare il flusso reale, correggere difetti bloccanti e congelare una release utilizzabile all'evento.
+Obiettivo: provare il flusso reale, correggere difetti bloccanti e congelare la release.
 
-### 13. Rifinire l'interfaccia essenziale
+### 11. UX essenziale
 
 - [ ] Ottimizzare `/play` per touch e schermi da 320 px.
-- [ ] Ottimizzare `/display` per distanza e 16:9.
-- [ ] Aggiungere animazione breve con fallback `prefers-reduced-motion`.
-- [ ] Rendere distinti pending, voto salvato, voto chiuso e offline.
-- [ ] Aggiungere conferma host quando chiude prima di `voted_count === participant_count`.
+- [ ] Ottimizzare `/display` per distanza e 16:9, inclusi gruppi di avatar leggibili.
+- [ ] Distinguere pending, voto salvato, voto chiuso e offline.
+- [ ] Rispettare `prefers-reduced-motion` nel reveal.
+- [ ] Confermare la chiusura host se non tutti hanno votato.
 
-Verifica: nessun testo importante viene tagliato con i contenuti reali.
+Verifica: testi reali, quattro risposte e avatar non causano tagli bloccanti.
 
-### 14. Eseguire test di sicurezza e dominio
+### 12. Test di dominio e sicurezza
 
-- [ ] Provare accesso host senza cookie e cookie alterato/scaduto.
-- [ ] Tentare lettura soluzione e risposte altrui con chiave anonima.
-- [ ] Tentare voto su stanza/domanda/opzione errata e fuori fase.
-- [ ] Provare doppio reveal e next concorrenti.
-- [ ] Verificare che i log non contengano segreti o risposte individuali.
+- [ ] Provare configurazioni con conteggi negativi, zero totale o richieste oltre disponibilità.
+- [ ] Provare capienza mancante, non positiva e join concorrenti sull'ultimo posto.
+- [ ] Modificare un contenuto sorgente in ambiente di test e verificare che la sessione resti invariata.
+- [ ] Tentare lettura di soluzioni e risposte altrui prima del reveal.
+- [ ] Tentare voto su sessione, domanda o opzione errata e fuori fase.
+- [ ] Provare `reveal` e `next` concorrenti e verificare i log.
 
-Verifica: tutti i tentativi non validi falliscono senza corrompere lo stato.
+Verifica: gli input non validi falliscono senza dati parziali, leak o punteggi duplicati.
 
-### 15. Eseguire collaudo multi-dispositivo
+### 13. Collaudo multi-browser
 
-- [ ] Usare host, display e almeno 3–5 telefoni/sessioni separate.
-- [ ] Simulare il limite di partecipanti concordato, se possibile con browser automatizzati o sessioni controllate senza introdurre dipendenze permanenti.
-- [ ] Provare refresh in ogni fase.
-- [ ] Spegnere e ripristinare la rete di un partecipante.
+- [ ] Usare host, display e almeno tre sessioni partecipante separate.
+- [ ] Giocare almeno due sessioni consecutive con configurazioni diverse.
+- [ ] Provare refresh in ogni fase e interruzione temporanea della rete.
 - [ ] Lasciare un partecipante senza voto e chiudere manualmente.
-- [ ] Giocare tutte le domande fino alla classifica finale.
+- [ ] Verificare gli avatar su opzioni corrette e sbagliate dopo il reveal.
+- [ ] Provare il numero massimo realistico scelto per l'evento, senza introdurre un default nel prodotto.
 
-Verifica: completare due partite consecutive sul deploy di preview senza interventi manuali sui dati.
+Verifica: entrambe le sessioni arrivano a una classifica finale stabile sul deploy di preview.
 
-### 16. Pubblicare e preparare l'evento
+### 14. Deploy e congelamento
 
 - [ ] Configurare le variabili segrete in Vercel.
 - [ ] Applicare migrazioni e seed all'ambiente definitivo.
-- [ ] Eseguire build di produzione e deploy.
-- [ ] Provare il deploy sulla rete e sui dispositivi dell'evento.
-- [ ] Annotare una procedura operativa breve per avvio, display e recupero pagina.
-- [ ] Congelare le funzionalità e correggere soltanto bug bloccanti.
+- [ ] Eseguire lint, typecheck, build e deploy di produzione.
+- [ ] Provare rete, dispositivi, host e display dell'evento.
+- [ ] Annotare una procedura breve di avvio e recupero pagina.
+- [ ] Congelare le funzionalità e correggere solo bug bloccanti.
 
-Verifica: URL, password host, quiz e classifica finale funzionano nell'ambiente definitivo.
+Verifica: URL, accesso host, quiz seed, sessione, reveal e classifica funzionano nell'ambiente definitivo.
 
 ## Ordine di priorità in caso di ritardo
 
-Non si tagliano integrità, RLS, comandi separati o recovery di base. Le rifiniture si riducono in questo ordine:
+Non si tagliano snapshot di sessione, RLS, capienza atomica, fasi separate, privacy pre-reveal, scoring idempotente o recovery di base. Si riducono nell'ordine:
 
-1. animazione ridotta a una transizione CSS semplice;
-2. distribuzione grafica sostituita da conteggi testuali;
-3. elenco nickname nel pannello host omesso;
-4. styling decorativo ridotto;
-5. test di carico limitato al numero realistico confermato.
-
-Il flusso join → voto → chiusura → rivelazione → punti → domanda successiva → classifica finale resta sempre completo.
+1. animazione, sostituita da una transizione CSS semplice;
+2. elenco completo dei partecipanti nel pannello host;
+3. styling decorativo degli avatar, mantenendone identità e posizione;
+4. rifiniture estetiche non necessarie alla leggibilità;
+5. test di carico oltre il numero realistico dell'evento.
 
 ## Matrice minima di collaudo
 
 | Scenario | Risultato atteso |
 | --- | --- |
-| Due utenti scelgono lo stesso nickname | Il secondo riceve errore chiaro |
+| Preset richiede più domande di quelle disponibili | Creazione rifiutata senza sessione parziale |
+| Quiz sorgente cambia dopo la creazione | Contenuti e ordine della sessione non cambiano |
+| Capienza non inserita | Creazione bloccata; nessun valore implicito |
+| Due join concorrenti sull'ultimo posto | Entra un solo nuovo partecipante |
+| Due utenti scelgono lo stesso nickname | Il secondo riceve un errore chiaro |
 | Stesso utente invia due opzioni | Una risposta; contatore incrementato una volta |
-| Voto arriva mentre l'host chiude | La transazione determina un solo esito valido, senza conteggi incoerenti |
-| Host rivela due volte | Seconda chiamata rifiutata; punti invariati |
-| Partecipante ricarica in `voting_open` | Ritrova stanza e propria scelta |
-| Partecipante ricarica dopo reveal | Vede esito e totale corretti |
-| Realtime viene interrotto | Stato offline visibile; snapshot corretto alla ripresa |
-| Non tutti votano | Host può chiudere e i mancanti ricevono zero |
-| Accesso a risultati prima del reveal | Nessuna soluzione o distribuzione restituita |
-| Fine ultima domanda | Nessun ulteriore voto; classifica finale stabile |
+| Host chiude mentre arriva un voto | Un solo esito transazionale valido |
+| Accesso ai risultati prima del reveal | Nessuna soluzione o associazione avatar-risposta |
+| Host rivela due volte | Seconda chiamata senza effetti; punti invariati |
+| Reveal valido | Soluzione e avatar appaiono sulle opzioni scelte |
+| Refresh o reconnessione | Fase, scelta personale e punteggio vengono ripristinati |
+| Fine ultima domanda | Nessun altro voto; classifica finale stabile |
 
-## Definizione di completamento dell'MVP
+## Definizione di completamento
 
-Il progetto è pronto quando soddisfa tutti i criteri di accettazione di `docs/requirements.md`, passa lint/typecheck/build, completa la matrice sopra sul deploy reale e non contiene segreti nel repository. Tutto il resto viene registrato come lavoro successivo all'evento.
+L'MVP è pronto quando soddisfa tutti i criteri di `docs/requirements.md`, passa lint/typecheck/build, completa la matrice sul deploy reale e non contiene segreti. Qualsiasi editor, marketplace, gestione utenti o creazione pubblica resta lavoro successivo al 6 agosto.
