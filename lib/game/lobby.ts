@@ -1,5 +1,6 @@
 import { GAME_PHASES, type GamePhase } from '@/types';
 
+import { isAnswerPosition } from './answer-position';
 import { isAvatarKey, type AvatarKey } from './avatars';
 
 export const GAME_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{6}$/;
@@ -96,10 +97,7 @@ function parsePublicQuestion(value: unknown): PublicGameQuestion | null {
       !isRecord(option) ||
       typeof option.id !== 'string' ||
       typeof option.text !== 'string' ||
-      typeof option.position !== 'number' ||
-      !Number.isInteger(option.position) ||
-      option.position < 1 ||
-      option.position > 4 ||
+      !isAnswerPosition(option.position) ||
       positions.has(option.position)
     ) {
       return null;
@@ -109,7 +107,7 @@ function parsePublicQuestion(value: unknown): PublicGameQuestion | null {
     options.push({
       id: option.id,
       text: option.text,
-      position: option.position as 1 | 2 | 3 | 4,
+      position: option.position,
     });
   }
 

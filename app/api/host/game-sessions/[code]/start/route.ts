@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 
+import { isAnswerPosition } from '@/lib/game/answer-position';
 import { GAME_CODE_PATTERN, normalizeGameCode } from '@/lib/game/lobby';
 import {
   HOST_SESSION_COOKIE_NAME,
@@ -77,10 +78,7 @@ function isStartGameRow(value: unknown): value is StartGameRow {
       isRecord(option) &&
       typeof option.id === 'string' &&
       typeof option.text === 'string' &&
-      typeof option.position === 'number' &&
-      Number.isInteger(option.position) &&
-      option.position >= 1 &&
-      option.position <= 4,
+      isAnswerPosition(option.position),
   );
 }
 

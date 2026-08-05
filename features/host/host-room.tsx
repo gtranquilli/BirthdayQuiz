@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
+import { getAnswerPositionLabel } from '@/lib/game/answer-position';
 import { normalizeGameCode } from '@/lib/game/lobby';
 
 interface HostRoomPlayer {
@@ -398,7 +399,7 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
                   className='rounded-xl bg-slate-50 px-4 py-3 font-semibold text-slate-800 ring-1 ring-slate-200'
                   key={option.id}
                 >
-                  {option.position}. {option.text}
+                  {getAnswerPositionLabel(option.position)}. {option.text}
                 </li>
               ))}
             </ol>

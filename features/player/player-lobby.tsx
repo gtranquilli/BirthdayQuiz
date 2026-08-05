@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
+import { getAnswerPositionLabel } from '@/lib/game/answer-position';
 import { isAvatarKey, type AvatarKey } from '@/lib/game/avatars';
 import {
   getPlayerStorageKey,
@@ -354,7 +355,9 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                     onClick={() => void submitVote(option.id)}
                     disabled={voteStatus === 'submitting'}
                   >
-                    <span className='mr-3 opacity-70'>{option.position}.</span>
+                    <span className='mr-3 opacity-70'>
+                      {getAnswerPositionLabel(option.position)}.
+                    </span>
                     {option.text}
                   </button>
                 );

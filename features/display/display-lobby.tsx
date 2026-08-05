@@ -3,6 +3,7 @@
 import { AvatarBadge } from '@/components/avatar-badge';
 import { normalizeGameCode } from '@/lib/game/lobby';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
+import { getAnswerPositionLabel } from '@/lib/game/answer-position';
 
 interface DisplayLobbyProps {
   readonly code: string;
@@ -79,7 +80,7 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
                   key={option.id}
                 >
                   <span className='mr-5 grid size-11 shrink-0 place-items-center rounded-full bg-indigo-500 text-lg'>
-                    {option.position}
+                    {getAnswerPositionLabel(option.position)}
                   </span>
                   {option.text}
                 </li>
