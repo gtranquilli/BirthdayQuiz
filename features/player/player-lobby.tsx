@@ -7,8 +7,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AvatarBadge } from '@/components/avatar-badge';
 import { Leaderboard } from '@/components/leaderboard';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
+import { getFinalResultComment } from '@/lib/game/final-result-comment';
 import { normalizeGameCode, type StoredPlayerEntry } from '@/lib/game/lobby';
 import { recoverParticipant } from '@/lib/game/participant-recovery';
+import { formatCompetitionRank, isRankTied } from '@/lib/game/ranking';
 import { createClient } from '@/lib/supabase/client';
 import {
   type LobbyConnectionStatus,
@@ -245,8 +247,8 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
 
   if (recovering || loading) {
     return (
-      <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
-        <p className='text-sm font-medium text-slate-600'>
+      <main className='grid min-h-screen place-items-center bg-slate-950 p-6 text-white'>
+        <p className='text-sm font-medium text-slate-300'>
           Recupero della tua partecipazione…
         </p>
       </main>
@@ -255,14 +257,14 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
 
   if (playerError || error || !player || !snapshot) {
     return (
-      <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
-        <section className='w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200'>
-          <h1 className='text-2xl font-bold text-slate-950'>Lobby non disponibile</h1>
-          <p className='mt-3 text-sm text-slate-600'>
+      <main className='grid min-h-screen place-items-center bg-slate-950 p-6 text-white'>
+        <section className='w-full max-w-md rounded-2xl bg-white/5 p-6 text-center shadow-2xl ring-1 ring-white/10'>
+          <h1 className='text-2xl font-bold text-white'>Lobby non disponibile</h1>
+          <p className='mt-3 text-sm text-slate-300'>
             {playerError ?? error ?? 'Impossibile caricare la stanza.'}
           </p>
           <Link
-            className='mt-6 inline-flex rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-700'
+            className='mt-6 inline-flex rounded-xl bg-indigo-500 px-5 py-3 font-semibold text-white hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/40'
             href={`/join/${code}`}
           >
             Torna all’ingresso
@@ -281,18 +283,18 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
     const question = snapshot.currentQuestion;
 
     return (
-      <main className='min-h-screen bg-slate-100 px-4 py-6'>
+      <main className='min-h-screen overflow-x-hidden bg-slate-950 px-4 py-6 text-white'>
         <div className='mx-auto max-w-lg'>
           <header className='flex items-center justify-between gap-3'>
             <div className='flex min-w-0 items-center gap-3'>
               <AvatarBadge avatarKey={player.avatarKey} size='sm' />
               <div className='min-w-0'>
-                <p className='truncate font-bold text-slate-950'>{player.nickname}</p>
-                <p className='text-xs font-semibold text-indigo-700'>
+                <p className='truncate font-bold text-white'>{player.nickname}</p>
+                <p className='text-xs font-semibold text-indigo-300'>
                   Domanda {(snapshot.currentQuestionIndex ?? 0) + 1} /{' '}
                   {snapshot.totalQuestionCount}
                 </p>
-                <p className='text-xs font-bold text-slate-600'>
+                <p className='text-xs font-bold text-slate-400'>
                   {ownLeaderboardEntry?.score ?? 0} punti
                 </p>
               </div>
@@ -300,19 +302,19 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 connectionStatus === 'connected'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-900'
+                  ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-300/25'
+                  : 'bg-amber-400/15 text-amber-200 ring-1 ring-amber-300/25'
               }`}
             >
               {CONNECTION_LABELS[connectionStatus]}
             </span>
           </header>
 
-          <section className='mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
-            <p className='text-sm font-bold uppercase tracking-wide text-indigo-700'>
+          <section className='mt-6 rounded-3xl bg-white/5 p-5 shadow-2xl ring-1 ring-white/10 sm:p-7'>
+            <p className='text-sm font-bold uppercase tracking-wide text-indigo-300'>
               {question.category}
             </p>
-            <h1 className='mt-3 text-2xl font-black leading-tight text-slate-950'>
+            <h1 className='mt-3 break-words text-2xl font-black leading-tight text-white'>
               {question.prompt}
             </h1>
 
@@ -323,10 +325,10 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                 return (
                   <button
                     aria-pressed={selected}
-                    className={`min-h-16 rounded-2xl px-4 py-3 text-left font-bold ring-2 transition-colors ${
+                    className={`min-h-16 rounded-2xl px-4 py-3 text-left font-bold ring-2 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300 disabled:cursor-wait disabled:opacity-50 ${
                       selected
-                        ? 'bg-indigo-600 text-white ring-indigo-600'
-                        : 'bg-slate-50 text-slate-900 ring-slate-200 hover:ring-indigo-300'
+                        ? 'bg-indigo-500 text-white ring-indigo-300'
+                        : 'bg-white/5 text-slate-100 ring-white/15 hover:bg-white/10 hover:ring-indigo-400/60'
                     }`}
                     key={option.id}
                     type='button'
@@ -347,10 +349,10 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
             <p
               className={`mt-5 rounded-xl px-4 py-3 text-center text-sm font-medium ${
                 voteStatus === 'error'
-                  ? 'bg-red-50 text-red-800'
+                  ? 'bg-red-500/15 text-red-200 ring-1 ring-red-400/30'
                   : voteStatus === 'saved'
-                    ? 'bg-emerald-50 text-emerald-800'
-                    : 'bg-amber-50 text-amber-900'
+                    ? 'bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-300/30'
+                    : 'bg-amber-400/15 text-amber-200 ring-1 ring-amber-300/30'
               }`}
             >
               {voteStatus === 'submitting'
@@ -376,14 +378,14 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
     const answeredCorrectly = savedOptionId === snapshot.correctOptionId;
 
     return (
-      <main className='min-h-screen bg-slate-100 px-4 py-6'>
+      <main className='min-h-screen overflow-x-hidden bg-slate-950 px-4 py-6 text-white'>
         <div className='mx-auto max-w-lg'>
           <header className='flex items-center justify-between gap-3'>
             <div className='flex min-w-0 items-center gap-3'>
               <AvatarBadge avatarKey={player.avatarKey} size='sm' />
               <div className='min-w-0'>
-                <p className='truncate font-bold text-slate-950'>{player.nickname}</p>
-                <p className='text-xs font-semibold text-emerald-700'>
+                <p className='truncate font-bold text-white'>{player.nickname}</p>
+                <p className='text-xs font-semibold text-emerald-300'>
                   Risposta rivelata · Domanda {snapshot.currentQuestionIndex + 1}
                 </p>
               </div>
@@ -391,19 +393,19 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 connectionStatus === 'connected'
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-900'
+                  ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-300/25'
+                  : 'bg-amber-400/15 text-amber-200 ring-1 ring-amber-300/25'
               }`}
             >
               {CONNECTION_LABELS[connectionStatus]}
             </span>
           </header>
 
-          <section className='mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
-            <p className='text-sm font-bold uppercase tracking-wide text-emerald-700'>
+          <section className='mt-6 rounded-3xl bg-white/5 p-5 shadow-2xl ring-1 ring-white/10 sm:p-7'>
+            <p className='text-sm font-bold uppercase tracking-wide text-emerald-300'>
               {question.category}
             </p>
-            <h1 className='mt-3 text-2xl font-black leading-tight text-slate-950'>
+            <h1 className='mt-3 break-words text-2xl font-black leading-tight text-white'>
               {question.prompt}
             </h1>
 
@@ -415,10 +417,10 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                   <li
                     className={`rounded-2xl px-4 py-3 font-bold ring-2 ${
                       option.isCorrect
-                        ? 'bg-emerald-50 text-emerald-950 ring-emerald-500'
+                        ? 'bg-emerald-400/20 text-emerald-50 ring-emerald-400'
                         : selected
-                          ? 'bg-red-50 text-red-950 ring-red-400'
-                          : 'bg-slate-50 text-slate-700 ring-slate-200'
+                          ? 'bg-red-500/20 text-red-50 ring-red-400'
+                          : 'bg-white/5 text-slate-300 ring-white/10'
                     }`}
                     key={option.id}
                   >
@@ -442,10 +444,10 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
             <div
               className={`mt-6 rounded-2xl px-5 py-4 text-center ${
                 savedOptionId === null
-                  ? 'bg-amber-50 text-amber-950'
+                  ? 'bg-amber-400/15 text-amber-100 ring-1 ring-amber-300/30'
                   : answeredCorrectly
-                    ? 'bg-emerald-50 text-emerald-950'
-                    : 'bg-red-50 text-red-950'
+                    ? 'bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-300/30'
+                    : 'bg-red-500/15 text-red-100 ring-1 ring-red-400/30'
               }`}
             >
               <p className='text-lg font-black'>
@@ -476,26 +478,48 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
   }
 
   if (snapshot.phase === 'finished') {
+    const finalRank = ownLeaderboardEntry?.rank ?? snapshot.participantCount;
+    const finalScore = ownLeaderboardEntry?.score ?? 0;
+    const highestScore = snapshot.leaderboard[0]?.score ?? 0;
+    const lowestScore = snapshot.leaderboard.at(-1)?.score ?? 0;
+    const finalComment = getFinalResultComment({
+      rank: finalRank,
+      participantCount: snapshot.participantCount,
+      score: finalScore,
+      isTied: isRankTied(snapshot.leaderboard, finalRank),
+      highestScore,
+      isLast: finalScore === lowestScore,
+      nickname: player.nickname,
+      code: snapshot.code,
+    });
+
     return (
-      <main className='min-h-screen bg-slate-100 px-4 py-7'>
+      <main className='min-h-screen overflow-x-hidden bg-slate-950 px-4 py-7 text-white'>
         <div className='mx-auto max-w-lg'>
-          <header className='text-center'>
+          <header className='rounded-3xl bg-white/5 p-6 text-center shadow-2xl ring-1 ring-white/10'>
             <AvatarBadge avatarKey={player.avatarKey} size='lg' />
-            <p className='mt-3 text-sm font-bold uppercase tracking-wide text-indigo-700'>
+            <p className='mt-4 text-sm font-bold uppercase tracking-wide text-indigo-300'>
               Quiz terminato
             </p>
-            <h1 className='mt-1 text-3xl font-black text-slate-950'>
-              {player.nickname}, sei {ownLeaderboardEntry?.rank ?? '—'}°
+            <h1 className='mt-2 break-words text-3xl font-black text-white'>
+              {player.nickname}
             </h1>
-            <p className='mt-2 text-xl font-black text-indigo-700'>
-              {ownLeaderboardEntry?.score ?? 0} punti
+            <p className='mt-4 text-4xl font-black text-indigo-200'>
+              {formatCompetitionRank(finalRank)}
+            </p>
+            <p className='mt-1 text-sm font-semibold text-slate-400'>
+              su {snapshot.participantCount} partecipanti
+            </p>
+            <p className='mt-4 text-2xl font-black text-white'>{finalScore} punti</p>
+            <p className='mt-5 rounded-2xl bg-indigo-400/15 px-5 py-4 text-base font-bold leading-relaxed text-indigo-100 ring-1 ring-indigo-300/30'>
+              {finalComment}
             </p>
           </header>
           <div className='mt-7'>
             <Leaderboard
-              large
+              dark
               entries={snapshot.leaderboard}
-              title='Classifica finale'
+              title='Classifica completa'
               highlightedPlayer={player}
             />
           </div>
@@ -506,17 +530,17 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
 
   if (snapshot.phase === 'voting_closed') {
     return (
-      <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
-        <section className='w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-sm ring-1 ring-slate-200'>
+      <main className='grid min-h-screen place-items-center bg-slate-950 p-6 text-white'>
+        <section className='w-full max-w-md rounded-3xl bg-white/5 p-7 text-center shadow-2xl ring-1 ring-white/10'>
           <AvatarBadge avatarKey={player.avatarKey} size='lg' />
-          <h1 className='mt-4 text-2xl font-black text-slate-950'>
+          <h1 className='mt-4 text-2xl font-black text-white'>
             Votazione chiusa
           </h1>
-          <p className='mt-3 text-sm text-slate-600'>
+          <p className='mt-3 text-sm text-slate-300'>
             La tua risposta non può più essere modificata. Attendi che l’host mostri la soluzione.
           </p>
           {savedOptionId ? (
-            <p className='mt-5 rounded-xl bg-indigo-50 px-4 py-3 font-semibold text-indigo-900'>
+            <p className='mt-5 rounded-xl bg-indigo-400/15 px-4 py-3 font-semibold text-indigo-100 ring-1 ring-indigo-300/30'>
               Voto registrato
             </p>
           ) : null}
@@ -528,35 +552,35 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
   const waiting = snapshot.phase === 'lobby';
 
   return (
-    <main className='min-h-screen bg-slate-100 px-4 py-8'>
+    <main className='min-h-screen overflow-x-hidden bg-slate-950 px-4 py-8 text-white'>
       <div className='mx-auto max-w-lg'>
         <header className='flex items-center justify-between gap-3'>
-          <p className='text-sm font-bold uppercase tracking-wide text-indigo-600'>
+          <p className='text-sm font-bold uppercase tracking-wide text-indigo-300'>
             Stanza {snapshot.code}
           </p>
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
               connectionStatus === 'connected'
-                ? 'bg-emerald-100 text-emerald-800'
-                : 'bg-amber-100 text-amber-900'
+                ? 'bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-300/25'
+                : 'bg-amber-400/15 text-amber-200 ring-1 ring-amber-300/25'
             }`}
           >
             {CONNECTION_LABELS[connectionStatus]}
           </span>
         </header>
 
-        <section className='mt-6 rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200'>
+        <section className='mt-6 rounded-3xl bg-white/5 p-6 text-center shadow-2xl ring-1 ring-white/10'>
           <AvatarBadge avatarKey={player.avatarKey} size='lg' />
-          <h1 className='mt-4 text-3xl font-black text-slate-950'>
+          <h1 className='mt-4 break-words text-3xl font-black text-white'>
             {player.nickname}
           </h1>
-          <p className='mt-1 text-sm text-slate-500'>{snapshot.quizTitle}</p>
+          <p className='mt-1 text-sm text-slate-400'>{snapshot.quizTitle}</p>
 
           <div
             className={`mt-7 rounded-2xl px-5 py-6 ${
               waiting
-                ? 'bg-indigo-50 text-indigo-950'
-                : 'bg-amber-50 text-amber-950'
+                ? 'bg-indigo-400/15 text-indigo-100 ring-1 ring-indigo-300/30'
+                : 'bg-amber-400/15 text-amber-100 ring-1 ring-amber-300/30'
             }`}
           >
             <p className='text-lg font-bold'>
@@ -571,7 +595,7 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
             </p>
           </div>
 
-          <p className='mt-5 text-sm font-medium text-slate-600'>
+          <p className='mt-5 text-sm font-medium text-slate-300'>
             Giocatori: {snapshot.participantCount} / {snapshot.maxPlayers}
           </p>
         </section>

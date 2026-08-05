@@ -16,6 +16,9 @@ recuperata dopo refresh. L’host può chiudere la votazione e, con un’azione
 separata, mostrare soluzione, avatar raggruppati e non votanti in Realtime.
 Dopo il reveal conferma il risultato: i punti vengono assegnati una sola volta
 e la sessione apre la domanda successiva oppure termina con la classifica finale.
+Le superfici partecipante usano lo stesso tema dark del display; durante il voto
+il display mostra un indicatore aggregato a pallini e, a fine partita, un podio
+compatibile con i pari merito e commenti personali deterministici sui telefoni.
 
 ## MVP
 
@@ -29,10 +32,13 @@ e la sessione apre la domanda successiva oppure termina con la classifica finale
 - Accesso partecipanti senza email tramite Supabase Auth anonimo.
 - Voto anonimo fino al reveal: durante apertura e chiusura sul display sono visibili solo domanda, quattro risposte e conteggio dei votanti.
 - Reveal separato in stile Among Us: risposta corretta e avatar accanto alle risposte scelte, poi punti e classifica.
+- Competition ranking condiviso (`1°, 1°, 3°`) con podio finale e classifica completa.
 - Recovery dopo refresh, breve disconnessione o perdita della sessione Auth,
   senza creare un secondo player né modificare voti e punteggio.
 
 Restano fuori scope editor completo, marketplace, gestione utenti, creazione pubblica dei quiz, timer, squadre, chat, media, speed bonus, moderazione avanzata e storico partite.
+Il prossimo blocco architetturale previsto è il supporto immagini per domande e
+risposte; non è incluso nel batch grafico corrente.
 
 ## Flusso della sessione
 

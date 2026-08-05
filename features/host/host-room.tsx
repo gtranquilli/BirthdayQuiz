@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AvatarBadge } from '@/components/avatar-badge';
 import { Leaderboard } from '@/components/leaderboard';
 import { RoomJoinQrCode } from '@/components/room-join-qr-code';
+import { VoteProgressDots } from '@/components/vote-progress-dots';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
 import { normalizeGameCode } from '@/lib/game/lobby';
@@ -665,10 +666,11 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
                 Domanda {(snapshot?.currentQuestionIndex ?? 0) + 1} /{' '}
                 {snapshot?.totalQuestionCount ?? 0}
               </p>
-              <p className='text-sm font-semibold text-slate-600'>
-                Voti ricevuti: {snapshot?.votedCount ?? 0} /{' '}
-                {participantCount}
-              </p>
+              <VoteProgressDots
+                compact
+                participantCount={participantCount}
+                votedCount={snapshot?.votedCount ?? 0}
+              />
             </div>
             {effectivePhase === 'voting_closed' ? (
               <p className='mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900'>

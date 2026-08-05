@@ -76,8 +76,8 @@ export function JoinGameScreen({
 
   if (recoveryStatus === 'checking' || recoveryStatus === 'recovered') {
     return (
-      <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
-        <p className='text-sm font-semibold text-slate-600'>
+      <main className='grid min-h-screen place-items-center bg-slate-950 p-6 text-white'>
+        <p className='text-sm font-semibold text-slate-300'>
           {recoveryStatus === 'recovered'
             ? 'Partecipazione recuperata.'
             : 'Recupero della tua partecipazione…'}
@@ -88,12 +88,12 @@ export function JoinGameScreen({
 
   if (recoveryStatus === 'error') {
     return (
-      <main className='grid min-h-screen place-items-center bg-slate-100 p-5'>
-        <section className='w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200'>
-          <h1 className='text-2xl font-black text-slate-950'>Recupero non disponibile</h1>
-          <p className='mt-3 text-sm text-slate-600'>{recoveryError}</p>
+      <main className='grid min-h-screen place-items-center bg-slate-950 p-5 text-white'>
+        <section className='w-full max-w-md rounded-3xl bg-white/5 p-6 text-center shadow-2xl ring-1 ring-white/10'>
+          <h1 className='text-2xl font-black text-white'>Recupero non disponibile</h1>
+          <p className='mt-3 text-sm text-slate-300'>{recoveryError}</p>
           <button
-            className='mt-6 min-h-12 rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white'
+            className='mt-6 min-h-12 rounded-xl bg-indigo-500 px-5 py-3 font-bold text-white hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/40'
             type='button'
             onClick={() => {
               setRecoveryError(null);
@@ -110,29 +110,29 @@ export function JoinGameScreen({
 
   if (loading) {
     return (
-      <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
-        <p className='text-sm font-semibold text-slate-600'>Verifica stanza…</p>
+      <main className='grid min-h-screen place-items-center bg-slate-950 p-6 text-white'>
+        <p className='text-sm font-semibold text-slate-300'>Verifica stanza…</p>
       </main>
     );
   }
 
   if (error || !snapshot) {
     return (
-      <main className='grid min-h-screen place-items-center bg-slate-100 p-5'>
-        <section className='w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200'>
-          <h1 className='text-2xl font-black text-slate-950'>Stanza non disponibile</h1>
-          <p className='mt-3 text-sm text-slate-600'>
+      <main className='grid min-h-screen place-items-center bg-slate-950 p-5 text-white'>
+        <section className='w-full max-w-md rounded-3xl bg-white/5 p-6 text-center shadow-2xl ring-1 ring-white/10'>
+          <h1 className='text-2xl font-black text-white'>Stanza non disponibile</h1>
+          <p className='mt-3 text-sm text-slate-300'>
             {error ?? 'Controlla il link e riprova.'}
           </p>
           <div className='mt-6 flex flex-col gap-3'>
             <button
-              className='min-h-12 rounded-xl bg-indigo-600 px-5 py-3 font-bold text-white'
+              className='min-h-12 rounded-xl bg-indigo-500 px-5 py-3 font-bold text-white hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/40'
               type='button'
               onClick={() => void refresh()}
             >
               Riprova
             </button>
-            <Link className='py-2 font-semibold text-indigo-700' href='/'>
+            <Link className='py-2 font-semibold text-indigo-300 hover:text-indigo-200' href='/'>
               Inserisci il codice manualmente
             </Link>
           </div>
@@ -146,21 +146,21 @@ export function JoinGameScreen({
 
   if (lobbyClosed || roomFull) {
     return (
-      <main className='grid min-h-screen place-items-center bg-slate-100 p-5'>
-        <section className='w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200'>
-          <p className='text-sm font-bold uppercase tracking-wide text-indigo-700'>
+      <main className='grid min-h-screen place-items-center bg-slate-950 p-5 text-white'>
+        <section className='w-full max-w-md rounded-3xl bg-white/5 p-6 text-center shadow-2xl ring-1 ring-white/10'>
+          <p className='text-sm font-bold uppercase tracking-wide text-indigo-300'>
             Stanza {snapshot.code}
           </p>
-          <h1 className='mt-2 text-2xl font-black text-slate-950'>
+          <h1 className='mt-2 text-2xl font-black text-white'>
             {lobbyClosed ? 'La partita è già iniziata' : 'La stanza è piena'}
           </h1>
-          <p className='mt-3 text-sm text-slate-600'>
+          <p className='mt-3 text-sm text-slate-300'>
             {lobbyClosed
               ? 'Non è più possibile aggiungere nuovi partecipanti.'
               : `Sono già entrati ${snapshot.participantCount} giocatori su ${snapshot.maxPlayers}.`}
           </p>
           {recoveryStatus === 'failed' ? (
-            <p className='mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900'>
+            <p className='mt-4 rounded-xl bg-amber-400/15 px-4 py-3 text-sm font-semibold text-amber-200 ring-1 ring-amber-300/30'>
               Non è stato possibile recuperare la partecipazione precedente.
             </p>
           ) : null}
@@ -170,19 +170,19 @@ export function JoinGameScreen({
   }
 
   return (
-    <main className='min-h-screen overflow-x-hidden bg-slate-100 px-4 py-5 sm:grid sm:place-items-center sm:py-10'>
-      <section className='mx-auto w-full max-w-xl rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-8'>
-        <p className='text-sm font-bold uppercase tracking-wide text-indigo-700'>
+    <main className='min-h-screen overflow-x-hidden bg-slate-950 px-4 py-5 text-white sm:grid sm:place-items-center sm:py-10'>
+      <section className='mx-auto w-full max-w-xl rounded-3xl bg-white/5 p-5 shadow-2xl shadow-black/30 ring-1 ring-white/10 sm:p-8'>
+        <p className='text-sm font-bold uppercase tracking-wide text-indigo-300'>
           Stanza {snapshot.code}
         </p>
-        <h1 className='mt-2 text-3xl font-black leading-tight text-slate-950'>
+        <h1 className='mt-2 break-words text-3xl font-black leading-tight text-white'>
           {snapshot.quizTitle}
         </h1>
-        <p className='mt-2 text-sm text-slate-600'>
+        <p className='mt-2 text-sm text-slate-300'>
           Scegli nickname e avatar. Al resto pensiamo noi.
         </p>
         {recoveryStatus === 'failed' ? (
-          <p className='mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900'>
+          <p className='mt-4 rounded-xl bg-amber-400/15 px-4 py-3 text-sm font-semibold text-amber-200 ring-1 ring-amber-300/30'>
             Non è stato possibile recuperare la partecipazione precedente.
           </p>
         ) : null}

@@ -129,6 +129,9 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Un refresh recupera tramite identità anonima soltanto l'opzione scelta dal partecipante corrente.
 - Nessun voto è accettato per un'altra domanda o fuori da `voting_open`.
 - Host e display mostrano `voted_count / participant_count`.
+- Sul display il conteggio è accompagnato da un pallino anonimo per ogni
+  partecipante, attivo per ciascun voto ricevuto. I pallini non identificano chi
+  ha votato e vanno a capo quando la capienza è elevata.
 - Il raggiungimento del totale non chiude automaticamente la votazione.
 
 ### RF-07 — Anonimato prima della rivelazione
@@ -169,6 +172,12 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Dopo l'ultima rivelazione, l'host conclude la sessione.
 - La fase diventa `finished` e display e telefoni mostrano la classifica finale.
 - In caso di pari punteggio i partecipanti condividono il piazzamento; l'ordine visuale stabile usa poi l'orario di ingresso.
+- Il ranking segue la regola competition: `300, 300, 100, 0` produce
+  `1°, 1°, 3°, 4°`. Il display rappresenta nel podio soltanto le posizioni reali
+  da 1 a 3, senza inventare il secondo posto in un risultato `1, 1, 3`.
+- Il telefono mette in primo piano posizione, totale partecipanti, punteggio e
+  un commento italiano deterministico basato su nickname, codice e risultato;
+  la classifica completa resta disponibile sotto in forma compatta.
 - Non sono accettati altri voti o ingressi.
 
 ### RF-12 — Ripristino e Realtime
@@ -207,6 +216,8 @@ Non sono consentiti salti di fase, riapertura del voto o ritorno a una domanda p
 - Browser mobile moderni su iOS e Android; browser desktop moderno per host e display.
 - Layout partecipante da 320 px e display leggibile a distanza in formato 16:9.
 - Target touch adeguati, focus visibile e corretto/errato non comunicati dal solo colore.
+- Home, join e play usano un tema dark predefinito coerente con il display, con
+  contrasto leggibile e nessuno scroll orizzontale da 320 px.
 - Animazioni compatibili con `prefers-reduced-motion`.
 
 ### RNF-02 — Prestazioni e capienza
@@ -246,7 +257,8 @@ Non sono consentiti salti di fase, riapertura del voto o ritorno a una domanda p
 - Più host con ruoli diversi.
 - Risposte multiple corrette, testo libero o sondaggi.
 - Timer, speed bonus, streak, penalità o power-up.
-- Squadre, chat, reazioni, audio, video o media nelle domande.
+- Squadre, chat, reazioni, audio, video o media nelle domande. Il supporto
+  immagini è il prossimo blocco architetturale, non parte di questo batch.
 - Upload e personalizzazione avanzata degli avatar.
 - Moderazione avanzata, late join, cambio nickname e Presence autorevole.
 - Pausa, riapertura voto, rollback o modifica punteggi.

@@ -137,14 +137,20 @@ Obiettivo: provare il flusso reale, correggere difetti bloccanti e congelare la 
 
 ### 11. UX essenziale
 
-- [ ] Ottimizzare `/play` per touch e schermi da 320 px.
-- [ ] Ottimizzare `/display` per distanza e 16:9, inclusi gruppi di avatar leggibili.
+- [x] Ottimizzare `/play` per touch e schermi da 320 px con tema dark.
+- [x] Ottimizzare `/display` per distanza e 16:9, inclusi gruppi di avatar leggibili.
 - [x] Mostrare un QR locale ad alto contrasto su display e host soltanto durante la lobby.
-- [ ] Distinguere pending, voto salvato, voto chiuso e offline.
+- [x] Distinguere pending, voto salvato, voto chiuso e offline.
+- [x] Mostrare pallini voto anonimi e responsive sul display.
+- [x] Mostrare podio competition-ranking e commento personale deterministico.
 - [ ] Rispettare `prefers-reduced-motion` nel reveal.
 - [ ] Confermare la chiusura host se non tutti hanno votato.
 
 Verifica: testi reali, quattro risposte e avatar non causano tagli bloccanti.
+
+Blocco architetturale successivo: definire il supporto immagini per domande e
+risposte, inclusi storage, snapshot e proiezione pubblica. Non è incluso nel
+batch UX corrente.
 
 ### 12. Test di dominio e sicurezza
 

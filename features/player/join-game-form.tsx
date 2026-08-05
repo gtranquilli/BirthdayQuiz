@@ -150,10 +150,10 @@ export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
 
   return (
     <form className='space-y-6' onSubmit={handleSubmit}>
-      <label className='block text-sm font-semibold text-slate-800'>
+      <label className='block text-sm font-semibold text-slate-100'>
         Nickname
         <input
-          className='mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 py-3 text-base text-slate-950 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
+          className='mt-2 min-h-12 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3 text-base text-white outline-none placeholder:text-slate-600 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/20 disabled:cursor-not-allowed disabled:opacity-50'
           type='text'
           inputMode='text'
           autoComplete='off'
@@ -170,7 +170,7 @@ export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
       </label>
 
       <fieldset>
-        <legend className='text-sm font-semibold text-slate-800'>
+        <legend className='text-sm font-semibold text-slate-100'>
           Scegli il tuo avatar
         </legend>
         <div className='mt-3 grid grid-cols-4 gap-2.5 sm:grid-cols-6 sm:gap-3'>
@@ -180,10 +180,10 @@ export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
               <button
                 aria-label={`Scegli ${avatar.label}`}
                 aria-pressed={selected}
-                className={`flex min-h-20 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border p-2 text-xs font-medium transition focus:outline-none focus:ring-4 focus:ring-indigo-100 ${
+                className={`flex min-h-20 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border p-2 text-xs font-medium transition focus:outline-none focus:ring-4 focus:ring-indigo-400/30 disabled:cursor-not-allowed disabled:opacity-50 ${
                   selected
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-900'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'
+                    ? 'border-indigo-300 bg-indigo-500/25 text-indigo-100 ring-2 ring-indigo-400'
+                    : 'border-white/10 bg-white/5 text-slate-300 hover:border-indigo-400/70 hover:bg-white/10'
                 }`}
                 key={avatar.key}
                 type='button'
@@ -200,7 +200,7 @@ export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
 
       {error ? (
         <p
-          className='rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100'
+          className='rounded-xl bg-red-500/15 px-4 py-3 text-sm font-semibold text-red-200 ring-1 ring-red-400/30'
           role='alert'
         >
           {error}
@@ -208,7 +208,7 @@ export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
       ) : null}
 
       <button
-        className='w-full rounded-xl bg-indigo-600 px-5 py-3.5 text-base font-bold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60'
+        className='w-full rounded-xl bg-indigo-500 px-5 py-3.5 text-base font-bold text-white shadow-sm hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/40 disabled:cursor-not-allowed disabled:opacity-50'
         type='submit'
         disabled={submitting}
       >

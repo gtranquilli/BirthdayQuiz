@@ -1,8 +1,10 @@
 'use client';
 
 import { AvatarBadge } from '@/components/avatar-badge';
+import { FinalPodium } from '@/components/final-podium';
 import { Leaderboard } from '@/components/leaderboard';
 import { RoomJoinQrCode } from '@/components/room-join-qr-code';
+import { VoteProgressDots } from '@/components/vote-progress-dots';
 import { normalizeGameCode } from '@/lib/game/lobby';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
@@ -47,7 +49,7 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
   if (snapshot.phase === 'finished') {
     return (
       <main className='min-h-screen bg-slate-950 px-8 py-8 text-white lg:px-16 lg:py-12'>
-        <div className='mx-auto max-w-5xl'>
+        <div className='mx-auto max-w-6xl'>
           <header className='text-center'>
             <p className='text-sm font-bold uppercase tracking-[0.3em] text-indigo-300'>
               Quiz terminato · Stanza {snapshot.code}
@@ -56,12 +58,14 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
               {snapshot.quizTitle}
             </h1>
           </header>
-          <div className='mt-8'>
+          <div className='mt-9'>
+            <FinalPodium entries={snapshot.leaderboard} />
+          </div>
+          <div className='mt-7'>
             <Leaderboard
               dark
-              large
               entries={snapshot.leaderboard}
-              title='Classifica finale'
+              title='Classifica completa'
             />
           </div>
         </div>
@@ -231,9 +235,12 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
             <p className='text-sm font-bold uppercase tracking-[0.2em] text-slate-400'>
               Stanza {snapshot.code}
             </p>
-            <p className='text-2xl font-black'>
-              Voti {snapshot.votedCount} / {snapshot.participantCount}
-            </p>
+            <VoteProgressDots
+              dark
+              className='max-w-2xl justify-end'
+              participantCount={snapshot.participantCount}
+              votedCount={snapshot.votedCount}
+            />
           </footer>
         </div>
       </main>

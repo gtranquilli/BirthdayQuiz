@@ -406,6 +406,25 @@ La proiezione condizionale è l’unico confine pubblico che rivela la relazione
 avatar-opzione. Non espone token, identificativi Auth, `player_id`, record
 `votes`, domande future o punteggi e non contiene tali campi nelle fasi precedenti.
 
+### Componenti di presentazione condivisi
+
+- `VoteProgressDots` trasforma esclusivamente i due aggregati `voted_count` e
+  `participant_count` in pallini anonimi; non riceve identità o voti individuali.
+- `FinalPodium` raggruppa la leaderboard pubblica per il rank già autorevole e
+  mostra i gruppi effettivi 1, 2 e 3. Un ranking `1, 1, 3` mantiene due primi e
+  lascia assente il secondo posto.
+- Gli helper di ranking formattano lo stesso competition rank su display,
+  leaderboard e telefono senza ricalcolare o rinumerare la classifica.
+- `getFinalResultComment` è puro: sceglie una variante italiana tramite hash
+  deterministico di codice stanza, nickname, categoria e risultato, quindi il
+  testo resta stabile dopo refresh.
+
+Il tema partecipante è dark di default e condivide la palette slate/indigo del
+display. Selezione, correttezza, errore, stato disabilitato e connessione hanno
+anche testo, etichette ARIA o differenze di bordo, non soltanto colore. Il
+supporto immagini per domande e risposte rimane il prossimo blocco
+architetturale e richiederà una decisione separata su storage e proiezione.
+
 ## 9. Realtime e recovery
 
 Display e partecipanti sottoscrivono la riga della proiezione sicura

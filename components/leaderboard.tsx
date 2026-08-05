@@ -1,5 +1,6 @@
 import { AvatarBadge } from '@/components/avatar-badge';
 import type { PublicLeaderboardPlayer } from '@/lib/game/lobby';
+import { formatCompetitionRank } from '@/lib/game/ranking';
 
 interface LeaderboardProps {
   readonly entries: readonly PublicLeaderboardPlayer[];
@@ -52,7 +53,7 @@ export function Leaderboard({
                   dark ? 'text-indigo-200' : 'text-indigo-700'
                 } ${large ? 'text-xl' : ''}`}
               >
-                {entry.rank}°
+                {formatCompetitionRank(entry.rank)}
               </span>
               <AvatarBadge avatarKey={entry.avatarKey} size='sm' />
               <span className={`min-w-0 flex-1 truncate font-bold ${large ? 'text-lg' : ''}`}>

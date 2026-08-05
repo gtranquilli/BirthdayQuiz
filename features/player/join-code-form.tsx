@@ -25,10 +25,10 @@ export function JoinCodeForm() {
 
   return (
     <form className='space-y-5' onSubmit={handleSubmit}>
-      <label className='block text-sm font-semibold text-slate-800'>
+      <label className='block text-sm font-semibold text-slate-100'>
         Codice stanza
         <input
-          className='mt-2 min-h-14 w-full rounded-xl border border-slate-300 px-4 py-3 text-center text-xl font-black uppercase tracking-[0.2em] text-slate-950 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
+          className='mt-2 min-h-14 w-full rounded-xl border border-white/15 bg-slate-900 px-4 py-3 text-center text-xl font-black uppercase tracking-[0.2em] text-white outline-none placeholder:text-slate-600 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/20'
           type='text'
           inputMode='text'
           autoComplete='one-time-code'
@@ -46,7 +46,7 @@ export function JoinCodeForm() {
 
       {error ? (
         <p
-          className='rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-red-100'
+          className='rounded-xl bg-red-500/15 px-4 py-3 text-sm font-semibold text-red-200 ring-1 ring-red-400/30'
           role='alert'
         >
           {error}
@@ -54,7 +54,7 @@ export function JoinCodeForm() {
       ) : null}
 
       <button
-        className='min-h-12 w-full rounded-xl bg-indigo-600 px-5 py-3.5 text-base font-bold text-white hover:bg-indigo-700'
+        className='min-h-12 w-full rounded-xl bg-indigo-500 px-5 py-3.5 text-base font-bold text-white hover:bg-indigo-400 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/40'
         type='submit'
       >
         Continua
