@@ -110,11 +110,12 @@ Verifica: nessun client pubblico ottiene soluzione, distribuzione o associazione
 
 ### 9. Chiusura e reveal separati
 
-- [ ] Collegare i comandi host `close` e `reveal` come transizioni distinte.
-- [ ] Bloccare ogni voto dopo `close`, anche tramite chiamata manuale.
-- [ ] Rendere scoring e reveal atomici e idempotenti.
-- [ ] Dopo il reveal evidenziare la soluzione e mostrare gli avatar vicino alle risposte scelte.
-- [ ] Mostrare esito personale, punti configurati e classifica.
+- [x] Collegare i comandi host `close` e `reveal` come transizioni distinte.
+- [x] Bloccare ogni voto dopo `close`, anche tramite chiamata manuale.
+- [ ] Integrare scoring idempotente nella transizione di reveal.
+- [x] Dopo il reveal evidenziare la soluzione e mostrare gli avatar vicino alle risposte scelte.
+- [x] Mostrare l’esito personale senza punti.
+- [ ] Mostrare punti configurati e classifica.
 
 Verifica: doppio reveal non duplica punti; le associazioni avatar-risposta diventano disponibili soltanto in `answer_revealed`.
 

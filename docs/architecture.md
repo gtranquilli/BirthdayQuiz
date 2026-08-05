@@ -35,7 +35,9 @@ Display -------------> snapshot sicuro + Realtime <---------------+
 pubblico. Contiene codice, titolo, fase, capienza, domanda corrente con opzioni,
 conteggio aggregato dei voti e coppie nickname/avatar. Trigger database la
 mantengono sincronizzata; è l'unica relazione di gioco pubblicata in Realtime e
-non contiene identificativi Auth, voti individuali, punteggi o soluzioni.
+non contiene identificativi Auth, record voto o punteggi. Soltanto durante
+`answer_revealed` aggiunge soluzione, conteggi per opzione, nickname/avatar
+raggruppati e non votanti.
 
 ## 3. Struttura applicativa prevista
 
@@ -52,6 +54,8 @@ app/
   api/host/game-sessions/route.ts
   api/host/game-sessions/[code]/route.ts
   api/host/game-sessions/[code]/start/route.ts
+  api/host/game-sessions/[code]/close/route.ts
+  api/host/game-sessions/[code]/reveal/route.ts
   api/host/game-sessions/[code]/players/[playerId]/route.ts
   api/host/game-sessions/[id]/transition/route.ts
   api/game-sessions/[code]/snapshot/route.ts
@@ -343,8 +347,8 @@ Supabase Auth anonimo; una chiamata priva di `auth.uid()` viene rifiutata.
 ### Transizioni host
 
 - `start`: `lobby` → `voting_open`, creando lo snapshot e aprendo la prima domanda;
-- `close`: `voting_open` → `voting_closed`;
-- `reveal`: `voting_closed` → `answer_revealed`, con valutazione e punteggi atomici;
+- `close_current_voting`: `voting_open` → `voting_closed`, congelando il conteggio e serializzandosi con `submit_vote` sulla riga sessione;
+- `reveal_current_answer`: `voting_closed` → `answer_revealed`, valorizzando `revealed_at` e pubblicando soluzione e gruppi avatar senza scoring in questa tranche;
 - `next`: `answer_revealed` → `voting_open` sulla domanda seguente, con `voted_count = 0`;
 - `finish`: `answer_revealed` → `finished` dopo l'ultima domanda.
 
@@ -361,17 +365,14 @@ Policy minime:
 
 La proiezione Realtime restituisce fase, conteggi e contenuto pubblico della
 domanda corrente. La scelta personale viene recuperata separatamente con
-`get_my_current_vote`; prima del reveal nessun payload include soluzione,
-correttezza, distribuzione o scelte degli altri partecipanti.
+`get_my_current_vote`. Durante `voting_open` e `voting_closed` soluzione e
+distribuzione sono assenti; in `answer_revealed` ogni opzione include
+`is_correct`, `vote_count` e soltanto nickname/avatar dei votanti, più una lista
+separata dei non votanti.
 
-`GET /api/game-sessions/[code]/results` verifica server-side `answer_revealed` o `finished` e la domanda rivelata. Restituisce:
-
-- opzione corretta;
-- per ogni opzione, gli `avatar_key` dei partecipanti che l'hanno scelta;
-- classifica;
-- per il partecipante autenticato, esito e punti personali.
-
-Questo è l'unico confine pubblico che rivela la relazione richiesta. Non espone token o identificativi Auth e non è disponibile nelle fasi precedenti.
+La proiezione condizionale è l’unico confine pubblico che rivela la relazione
+avatar-opzione. Non espone token, identificativi Auth, `player_id`, record
+`votes`, domande future o punteggi e non contiene tali campi nelle fasi precedenti.
 
 ## 9. Realtime e recovery
 
@@ -396,7 +397,7 @@ Sequenza consigliata:
 4. I partecipanti entrano in lobby fino alla capienza e ricevono un avatar stabile.
 5. L'host avvia: snapshot e ordine vengono congelati atomicamente e la prima domanda diventa pubblica.
 6. L'host chiude esplicitamente il voto senza mostrare soluzione o associazioni.
-7. L'host rivela: scoring idempotente, soluzione e avatar compaiono accanto alle risposte scelte.
+7. L'host rivela: soluzione e avatar compaiono accanto alle risposte scelte; lo scoring resta da integrare.
 8. L'host apre la domanda successiva oppure termina con la classifica finale.
 
 ## 11. Sicurezza host e configurazione

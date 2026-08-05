@@ -42,7 +42,108 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
     );
   }
 
-  if (snapshot.phase === 'voting_open' && snapshot.currentQuestion) {
+  if (snapshot.phase === 'answer_revealed') {
+    const question = snapshot.currentQuestion;
+
+    return (
+      <main className='min-h-screen bg-slate-950 px-7 py-6 text-white lg:px-12 lg:py-8'>
+        <div className='mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col'>
+          <header className='flex items-start justify-between gap-8'>
+            <div>
+              <p className='text-sm font-bold uppercase tracking-[0.3em] text-emerald-300'>
+                Risposta rivelata
+              </p>
+              <p className='mt-2 text-lg font-bold text-slate-300'>
+                {question.category} · Domanda {snapshot.currentQuestionIndex + 1} /{' '}
+                {snapshot.totalQuestionCount}
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-4 py-2 text-sm font-bold ${
+                connectionStatus === 'connected'
+                  ? 'bg-emerald-400/15 text-emerald-300'
+                  : 'bg-amber-400/15 text-amber-200'
+              }`}
+            >
+              {connectionStatus === 'connected' ? 'In tempo reale' : 'Riconnessione…'}
+            </span>
+          </header>
+
+          <h1 className='mx-auto mt-5 max-w-5xl text-center text-3xl font-black leading-tight lg:text-5xl'>
+            {question.prompt}
+          </h1>
+
+          <ol className='mt-7 grid flex-1 gap-4 md:grid-cols-2'>
+            {question.options.map((option) => (
+              <li
+                className={`rounded-3xl p-5 ring-2 ${
+                  option.isCorrect
+                    ? 'bg-emerald-500/20 ring-emerald-400'
+                    : 'bg-white/5 ring-white/10'
+                }`}
+                key={option.id}
+              >
+                <div className='flex items-start gap-4'>
+                  <span
+                    className={`grid size-12 shrink-0 place-items-center rounded-full text-xl font-black ${
+                      option.isCorrect ? 'bg-emerald-400 text-slate-950' : 'bg-slate-700'
+                    }`}
+                  >
+                    {getAnswerPositionLabel(option.position)}
+                  </span>
+                  <div className='min-w-0 flex-1'>
+                    <div className='flex items-start justify-between gap-4'>
+                      <p className='text-xl font-black lg:text-2xl'>{option.text}</p>
+                      <span className='shrink-0 text-sm font-bold text-slate-300'>
+                        {option.voteCount} voti
+                      </span>
+                    </div>
+                    {option.isCorrect ? (
+                      <p className='mt-1 text-sm font-black uppercase tracking-wide text-emerald-300'>
+                        Risposta corretta
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <ul className='mt-5 flex flex-wrap gap-3'>
+                  {option.players.map((optionPlayer) => (
+                    <li
+                      className='flex items-center gap-2 rounded-full bg-white/10 py-2 pl-2 pr-4 font-semibold'
+                      key={`${option.id}:${optionPlayer.avatarKey}`}
+                    >
+                      <AvatarBadge avatarKey={optionPlayer.avatarKey} size='sm' />
+                      <span className='max-w-36 truncate'>{optionPlayer.nickname}</span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+
+          {snapshot.nonVoters.length > 0 ? (
+            <section className='mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-amber-400/10 px-5 py-3 ring-1 ring-amber-300/30'>
+              <h2 className='mr-2 font-black text-amber-200'>Nessuna risposta</h2>
+              {snapshot.nonVoters.map((nonVoter) => (
+                <span
+                  className='flex items-center gap-2 rounded-full bg-white/10 py-1.5 pl-2 pr-3 text-sm font-semibold'
+                  key={`non-voter:${nonVoter.avatarKey}`}
+                >
+                  <AvatarBadge avatarKey={nonVoter.avatarKey} size='sm' />
+                  {nonVoter.nickname}
+                </span>
+              ))}
+            </section>
+          ) : null}
+        </div>
+      </main>
+    );
+  }
+
+  if (
+    snapshot.phase === 'voting_open' ||
+    snapshot.phase === 'voting_closed'
+  ) {
     const question = snapshot.currentQuestion;
 
     return (
@@ -54,9 +155,12 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
                 {question.category}
               </p>
               <p className='mt-2 text-xl font-bold text-slate-300'>
-                Domanda {(snapshot.currentQuestionIndex ?? 0) + 1} /{' '}
+                Domanda {snapshot.currentQuestionIndex + 1} /{' '}
                 {snapshot.totalQuestionCount}
               </p>
+              {snapshot.phase === 'voting_closed' ? (
+                <p className='mt-2 font-bold text-amber-300'>Votazione chiusa</p>
+              ) : null}
             </div>
             <span
               className={`rounded-full px-4 py-2 text-sm font-bold ${

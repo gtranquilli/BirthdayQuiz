@@ -387,6 +387,131 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
     );
   }
 
+  if (snapshot.phase === 'answer_revealed') {
+    const question = snapshot.currentQuestion;
+    const correctOption = question.options.find((option) => option.isCorrect);
+    const selectedOption = question.options.find(
+      (option) => option.id === savedOptionId,
+    );
+    const answeredCorrectly = savedOptionId === snapshot.correctOptionId;
+
+    return (
+      <main className='min-h-screen bg-slate-100 px-4 py-6'>
+        <div className='mx-auto max-w-lg'>
+          <header className='flex items-center justify-between gap-3'>
+            <div className='flex min-w-0 items-center gap-3'>
+              <AvatarBadge avatarKey={player.avatarKey} size='sm' />
+              <div className='min-w-0'>
+                <p className='truncate font-bold text-slate-950'>{player.nickname}</p>
+                <p className='text-xs font-semibold text-emerald-700'>
+                  Risposta rivelata · Domanda {snapshot.currentQuestionIndex + 1}
+                </p>
+              </div>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                connectionStatus === 'connected'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-900'
+              }`}
+            >
+              {CONNECTION_LABELS[connectionStatus]}
+            </span>
+          </header>
+
+          <section className='mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
+            <p className='text-sm font-bold uppercase tracking-wide text-emerald-700'>
+              {question.category}
+            </p>
+            <h1 className='mt-3 text-2xl font-black leading-tight text-slate-950'>
+              {question.prompt}
+            </h1>
+
+            <ol className='mt-6 grid gap-3'>
+              {question.options.map((option) => {
+                const selected = option.id === savedOptionId;
+
+                return (
+                  <li
+                    className={`rounded-2xl px-4 py-3 font-bold ring-2 ${
+                      option.isCorrect
+                        ? 'bg-emerald-50 text-emerald-950 ring-emerald-500'
+                        : selected
+                          ? 'bg-red-50 text-red-950 ring-red-400'
+                          : 'bg-slate-50 text-slate-700 ring-slate-200'
+                    }`}
+                    key={option.id}
+                  >
+                    <div className='flex items-center justify-between gap-3'>
+                      <span>
+                        {getAnswerPositionLabel(option.position)}. {option.text}
+                      </span>
+                      <span className='text-xs font-black uppercase tracking-wide'>
+                        {option.isCorrect
+                          ? 'Corretta'
+                          : selected
+                            ? 'La tua scelta'
+                            : ''}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div
+              className={`mt-6 rounded-2xl px-5 py-4 text-center ${
+                savedOptionId === null
+                  ? 'bg-amber-50 text-amber-950'
+                  : answeredCorrectly
+                    ? 'bg-emerald-50 text-emerald-950'
+                    : 'bg-red-50 text-red-950'
+              }`}
+            >
+              <p className='text-lg font-black'>
+                {savedOptionId === null
+                  ? 'Non hai risposto'
+                  : answeredCorrectly
+                    ? 'Risposta corretta!'
+                    : 'Risposta errata'}
+              </p>
+              <p className='mt-1 text-sm font-medium'>
+                La risposta corretta è{' '}
+                {correctOption
+                  ? `${getAnswerPositionLabel(correctOption.position)}. ${correctOption.text}`
+                  : 'non disponibile'}
+                {selectedOption && !answeredCorrectly
+                  ? ` La tua scelta era ${getAnswerPositionLabel(selectedOption.position)}.`
+                  : ''}
+              </p>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (snapshot.phase === 'voting_closed') {
+    return (
+      <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
+        <section className='w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-sm ring-1 ring-slate-200'>
+          <AvatarBadge avatarKey={player.avatarKey} size='lg' />
+          <h1 className='mt-4 text-2xl font-black text-slate-950'>
+            Votazione chiusa
+          </h1>
+          <p className='mt-3 text-sm text-slate-600'>
+            La tua risposta non può più essere modificata. Attendi che l’host mostri la soluzione.
+          </p>
+          {savedOptionId ? (
+            <p className='mt-5 rounded-xl bg-indigo-50 px-4 py-3 font-semibold text-indigo-900'>
+              Voto registrato
+            </p>
+          ) : null}
+        </section>
+      </main>
+    );
+  }
+
   const waiting = snapshot.phase === 'lobby';
 
   return (

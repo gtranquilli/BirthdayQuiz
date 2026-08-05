@@ -44,7 +44,7 @@ export function useLobbySession(rawCode: string): LobbySessionState {
     const { data, error: queryError } = await supabase
       .from('lobby_public_sessions')
       .select(
-        'code,quiz_title,phase,participant_count,max_players,current_question_index,total_question_count,current_question,voted_count,players',
+        'code,quiz_title,phase,participant_count,max_players,current_question_index,total_question_count,current_question,voted_count,players,correct_option_id,non_voters',
       )
       .eq('code', code)
       .maybeSingle();

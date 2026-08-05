@@ -11,10 +11,11 @@ il primo game loop sono presenti. I partecipanti possono entrare con Auth
 anonima, recuperare la propria identità e vedere la prima domanda; host e
 display ricevono lo stesso stato pubblico tramite Realtime. Durante
 `voting_open` il voto viene salvato atomicamente e la scelta personale viene
-recuperata dopo refresh.
+recuperata dopo refresh. L’host può chiudere la votazione e, con un’azione
+separata, mostrare soluzione, avatar raggruppati e non votanti in Realtime.
 
-Chiusura dei voti, reveal, scoring, domande successive e classifica restano da
-implementare secondo la roadmap MVP al 6 agosto 2026.
+Scoring, domande successive e classifica restano da implementare secondo la
+roadmap MVP al 6 agosto 2026.
 
 ## MVP
 
@@ -38,7 +39,7 @@ Restano fuori scope editor completo, marketplace, gestione utenti, creazione pub
 2. Inserisce il massimo giocatori e conferma la creazione.
 3. I partecipanti entrano in lobby con nickname e avatar.
 4. L'host avvia: il sistema estrae e congela domande, quattro risposte, soluzioni, punteggi e ordine, poi apre la prima domanda.
-5. L'host chiude il voto e poi attiva separatamente il reveal.
+5. L'host chiude il voto e poi attiva separatamente il reveal con soluzione e avatar.
 6. Dopo ogni reveal può aprire la domanda successiva o terminare con la classifica finale.
 
 Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `finished`.
@@ -48,9 +49,9 @@ Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `fi
 | Rotta | Utente | Responsabilità |
 | --- | --- | --- |
 | `/` | Partecipante | Inserimento di codice sessione e nickname |
-| `/play/[code]` | Partecipante | Attesa, voto persistente modificabile e recovery della scelta personale |
+| `/play/[code]` | Partecipante | Attesa, voto persistente, recovery ed esito personale dopo il reveal |
 | `/host` | Host | Accesso, configurazione, creazione e stanze recenti |
-| `/host/[code]` | Host | Gestione lobby, avvio e stato pubblico della prima domanda |
+| `/host/[code]` | Host | Gestione lobby, avvio, chiusura voti e reveal della domanda corrente |
 | `/display/[code]` | Pubblico | Lobby, domanda, conteggio, reveal e classifica |
 
 ## Architettura in breve

@@ -133,6 +133,7 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - I controlli si disabilitano dopo l'aggiornamento Realtime e ogni tentativo tardivo viene comunque rifiutato dal database.
 - Domanda e risposte restano visibili, ma soluzione e scelte altrui rimangono nascoste.
 - Retry e doppio click non cambiano nuovamente lo stato né assegnano punti.
+- La chiusura e il reveal restano azioni host distinte; un voto concorrente è serializzato sullo stesso lock della sessione.
 
 ### RF-09 — Rivelazione stile Among Us e scoring
 
@@ -142,6 +143,7 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Chi non risponde non viene associato a un'opzione e riceve zero punti.
 - Il telefono mostra risposta corretta, correttezza della propria scelta, punti ottenuti e totale.
 - La classifica può essere mostrata dopo la rivelazione; non è richiesta una visualizzazione statistica separata oltre agli avatar.
+- La prima implementazione del reveal pubblica soluzione, distribuzione e non votanti senza assegnare ancora punti; scoring e classifica restano una tranche successiva.
 
 ### RF-10 — Domanda successiva
 

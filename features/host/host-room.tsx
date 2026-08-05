@@ -118,6 +118,8 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
   const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [closingVoting, setClosingVoting] = useState(false);
+  const [revealingAnswer, setRevealingAnswer] = useState(false);
 
   const loadSession = useCallback(async () => {
     const response = await fetch(`/api/host/game-sessions/${code}`, {
@@ -245,6 +247,74 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
     }
   }
 
+  async function closeVoting() {
+    const votedCount = snapshot?.votedCount ?? 0;
+    const currentParticipantCount = snapshot?.participantCount ?? 0;
+
+    if (
+      votedCount < currentParticipantCount &&
+      !window.confirm(
+        `Hanno votato ${votedCount} giocatori su ${currentParticipantCount}. Vuoi chiudere comunque?`,
+      )
+    ) {
+      return;
+    }
+
+    setClosingVoting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/host/game-sessions/${code}/close`, {
+        method: 'POST',
+      });
+      const payload = await readJson(response);
+
+      if (!response.ok) {
+        throw new Error(
+          getErrorMessage(payload, 'Impossibile chiudere la votazione.'),
+        );
+      }
+
+      await Promise.all([loadSession(), refresh()]);
+    } catch (closeError) {
+      setError(
+        closeError instanceof Error
+          ? closeError.message
+          : 'Impossibile chiudere la votazione.',
+      );
+    } finally {
+      setClosingVoting(false);
+    }
+  }
+
+  async function revealAnswer() {
+    setRevealingAnswer(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/host/game-sessions/${code}/reveal`, {
+        method: 'POST',
+      });
+      const payload = await readJson(response);
+
+      if (!response.ok) {
+        throw new Error(
+          getErrorMessage(payload, 'Impossibile mostrare la risposta.'),
+        );
+      }
+
+      await Promise.all([loadSession(), refresh()]);
+    } catch (revealError) {
+      setError(
+        revealError instanceof Error
+          ? revealError.message
+          : 'Impossibile mostrare la risposta.',
+      );
+    } finally {
+      setRevealingAnswer(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
@@ -351,6 +421,26 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
               {starting ? 'Avvio in corso…' : 'Avvia quiz'}
             </button>
           ) : null}
+          {effectivePhase === 'voting_open' ? (
+            <button
+              className='rounded-xl bg-amber-500 px-4 py-2.5 font-semibold text-slate-950 hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50'
+              type='button'
+              onClick={() => void closeVoting()}
+              disabled={closingVoting}
+            >
+              {closingVoting ? 'Chiusura in corso…' : 'Chiudi voti'}
+            </button>
+          ) : null}
+          {effectivePhase === 'voting_closed' ? (
+            <button
+              className='rounded-xl bg-emerald-600 px-4 py-2.5 font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50'
+              type='button'
+              onClick={() => void revealAnswer()}
+              disabled={revealingAnswer}
+            >
+              {revealingAnswer ? 'Reveal in corso…' : 'Mostra risposta'}
+            </button>
+          ) : null}
           <a
             className='rounded-xl bg-slate-900 px-4 py-2.5 font-semibold text-white hover:bg-slate-700'
             href={`/display/${session.code}`}
@@ -375,7 +465,81 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
           </p>
         ) : null}
 
-        {effectivePhase === 'voting_open' && currentQuestion ? (
+        {snapshot?.phase === 'answer_revealed' ? (
+          <section className='mt-7 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <p className='text-sm font-bold uppercase tracking-wide text-emerald-700'>
+                Risposta rivelata · Domanda {snapshot.currentQuestionIndex + 1} /{' '}
+                {snapshot.totalQuestionCount}
+              </p>
+              <p className='text-sm font-semibold text-slate-600'>
+                Voti ricevuti: {snapshot.votedCount} / {participantCount}
+              </p>
+            </div>
+            <p className='mt-2 text-sm font-semibold text-slate-500'>
+              {snapshot.currentQuestion.category}
+            </p>
+            <h2 className='mt-2 text-2xl font-black text-slate-950'>
+              {snapshot.currentQuestion.prompt}
+            </h2>
+            <ol className='mt-5 grid gap-4 sm:grid-cols-2'>
+              {snapshot.currentQuestion.options.map((option) => (
+                <li
+                  className={`rounded-2xl p-4 ring-2 ${
+                    option.isCorrect
+                      ? 'bg-emerald-50 ring-emerald-500'
+                      : 'bg-slate-50 ring-slate-200'
+                  }`}
+                  key={option.id}
+                >
+                  <div className='flex items-start justify-between gap-3'>
+                    <p className='font-bold text-slate-950'>
+                      {getAnswerPositionLabel(option.position)}. {option.text}
+                    </p>
+                    <span className='shrink-0 text-sm font-bold text-slate-600'>
+                      {option.voteCount} voti
+                    </span>
+                  </div>
+                  {option.isCorrect ? (
+                    <p className='mt-2 text-xs font-black uppercase tracking-wide text-emerald-700'>
+                      Risposta corretta
+                    </p>
+                  ) : null}
+                  <ul className='mt-4 flex flex-wrap gap-3'>
+                    {option.players.map((optionPlayer) => (
+                      <li
+                        className='flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold ring-1 ring-slate-200'
+                        key={`${option.id}:${optionPlayer.avatarKey}`}
+                      >
+                        <AvatarBadge avatarKey={optionPlayer.avatarKey} size='sm' />
+                        {optionPlayer.nickname}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+            {snapshot.nonVoters.length > 0 ? (
+              <div className='mt-5 rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200'>
+                <h3 className='font-bold text-amber-950'>Nessuna risposta</h3>
+                <ul className='mt-3 flex flex-wrap gap-3'>
+                  {snapshot.nonVoters.map((nonVoter) => (
+                    <li
+                      className='flex items-center gap-2 rounded-full bg-white px-3 py-2 text-sm font-semibold'
+                      key={`non-voter:${nonVoter.avatarKey}`}
+                    >
+                      <AvatarBadge avatarKey={nonVoter.avatarKey} size='sm' />
+                      {nonVoter.nickname}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {(effectivePhase === 'voting_open' ||
+          effectivePhase === 'voting_closed') && currentQuestion ? (
           <section className='mt-7 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
             <div className='flex flex-wrap items-center justify-between gap-3'>
               <p className='text-sm font-bold uppercase tracking-wide text-indigo-700'>
@@ -387,6 +551,11 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
                 {participantCount}
               </p>
             </div>
+            {effectivePhase === 'voting_closed' ? (
+              <p className='mt-3 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900'>
+                Votazione chiusa. La soluzione è ancora nascosta.
+              </p>
+            ) : null}
             <p className='mt-2 text-sm font-semibold text-slate-500'>
               {currentQuestion.category}
             </p>
