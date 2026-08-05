@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
+import { Leaderboard } from '@/components/leaderboard';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
 import { isAvatarKey, type AvatarKey } from '@/lib/game/avatars';
 import {
@@ -140,6 +141,7 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
   const [voteStatus, setVoteStatus] = useState<VoteStatus>('idle');
   const [voteError, setVoteError] = useState<string | null>(null);
   const voteRequestInFlight = useRef(false);
+  const recoveredVoteQuestionId = useRef<string | null>(null);
 
   const recoverPlayer = useCallback(async () => {
     const storedPlayer = readStoredPlayer(code);
@@ -193,26 +195,6 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
       return;
     }
 
-    setVoteStatus('recovering');
-    const currentVoteResult = await supabase.rpc('get_my_current_vote', {
-      p_code: code,
-    });
-
-    if (currentVoteResult.error) {
-      setVoteStatus('error');
-      setVoteError(getVoteErrorMessage(currentVoteResult.error));
-    } else if (
-      currentVoteResult.data === null ||
-      typeof currentVoteResult.data === 'string'
-    ) {
-      setSavedOptionId(currentVoteResult.data);
-      setVoteStatus(currentVoteResult.data === null ? 'idle' : 'saved');
-      setVoteError(null);
-    } else {
-      setVoteStatus('error');
-      setVoteError('Impossibile recuperare il voto registrato. Riprova.');
-    }
-
     setPlayer(recoveredPlayer);
     setPlayerError(null);
     setRecovering(false);
@@ -226,6 +208,75 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
 
     return () => window.clearTimeout(recoveryId);
   }, [recoverPlayer]);
+
+  const currentQuestionId =
+    snapshot?.phase === 'voting_open' ||
+    snapshot?.phase === 'voting_closed' ||
+    snapshot?.phase === 'answer_revealed'
+      ? snapshot.currentQuestion.id
+      : null;
+
+  useEffect(() => {
+    if (!player) {
+      return;
+    }
+
+    let cancelled = false;
+    const recoveryId = window.setTimeout(() => {
+      if (currentQuestionId === null) {
+        recoveredVoteQuestionId.current = null;
+        setSavedOptionId(null);
+        setVoteStatus('idle');
+        setVoteError(null);
+        return;
+      }
+
+      if (recoveredVoteQuestionId.current === currentQuestionId) {
+        return;
+      }
+
+      recoveredVoteQuestionId.current = currentQuestionId;
+      setSavedOptionId(null);
+      setVoteStatus('recovering');
+      setVoteError(null);
+
+      void supabase
+        .rpc('get_my_current_vote', { p_code: code })
+        .then(
+          (currentVoteResult: {
+            data: unknown;
+            error: SupabaseErrorLike | null;
+          }) => {
+            if (cancelled) {
+              return;
+            }
+
+            if (currentVoteResult.error) {
+              setVoteStatus('error');
+              setVoteError(getVoteErrorMessage(currentVoteResult.error));
+              return;
+            }
+
+            if (
+              currentVoteResult.data === null ||
+              typeof currentVoteResult.data === 'string'
+            ) {
+              setSavedOptionId(currentVoteResult.data);
+              setVoteStatus(currentVoteResult.data === null ? 'idle' : 'saved');
+              return;
+            }
+
+            setVoteStatus('error');
+            setVoteError('Impossibile recuperare il voto registrato. Riprova.');
+          },
+        );
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(recoveryId);
+    };
+  }, [code, currentQuestionId, player, supabase]);
 
   async function submitVote(optionId: string) {
     if (voteRequestInFlight.current || optionId === savedOptionId) {
@@ -302,6 +353,11 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
     );
   }
 
+  const ownLeaderboardEntry = snapshot.leaderboard.find(
+    (entry) =>
+      entry.nickname === player.nickname && entry.avatarKey === player.avatarKey,
+  );
+
   if (snapshot.phase === 'voting_open' && snapshot.currentQuestion) {
     const question = snapshot.currentQuestion;
 
@@ -316,6 +372,9 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                 <p className='text-xs font-semibold text-indigo-700'>
                   Domanda {(snapshot.currentQuestionIndex ?? 0) + 1} /{' '}
                   {snapshot.totalQuestionCount}
+                </p>
+                <p className='text-xs font-bold text-slate-600'>
+                  {ownLeaderboardEntry?.score ?? 0} punti
                 </p>
               </div>
             </div>
@@ -353,7 +412,9 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                     key={option.id}
                     type='button'
                     onClick={() => void submitVote(option.id)}
-                    disabled={voteStatus === 'submitting'}
+                    disabled={
+                      voteStatus === 'submitting' || voteStatus === 'recovering'
+                    }
                   >
                     <span className='mr-3 opacity-70'>
                       {getAnswerPositionLabel(option.position)}.
@@ -484,8 +545,41 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                   ? ` La tua scelta era ${getAnswerPositionLabel(selectedOption.position)}.`
                   : ''}
               </p>
+              <p className='mt-3 text-base font-black'>
+                +{ownLeaderboardEntry?.currentPoints ?? 0} punti · Totale{' '}
+                {ownLeaderboardEntry?.score ?? 0}
+              </p>
             </div>
           </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (snapshot.phase === 'finished') {
+    return (
+      <main className='min-h-screen bg-slate-100 px-4 py-7'>
+        <div className='mx-auto max-w-lg'>
+          <header className='text-center'>
+            <AvatarBadge avatarKey={player.avatarKey} size='lg' />
+            <p className='mt-3 text-sm font-bold uppercase tracking-wide text-indigo-700'>
+              Quiz terminato
+            </p>
+            <h1 className='mt-1 text-3xl font-black text-slate-950'>
+              {player.nickname}, sei {ownLeaderboardEntry?.rank ?? '—'}°
+            </h1>
+            <p className='mt-2 text-xl font-black text-indigo-700'>
+              {ownLeaderboardEntry?.score ?? 0} punti
+            </p>
+          </header>
+          <div className='mt-7'>
+            <Leaderboard
+              large
+              entries={snapshot.leaderboard}
+              title='Classifica finale'
+              highlightedPlayer={player}
+            />
+          </div>
         </div>
       </main>
     );

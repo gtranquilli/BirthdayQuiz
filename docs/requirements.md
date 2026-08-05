@@ -138,18 +138,19 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 ### RF-09 — Rivelazione stile Among Us e scoring
 
 - Un secondo comando host passa da `voting_closed` ad `answer_revealed`.
-- La stessa operazione valuta le risposte, assegna una sola volta il punteggio configurato della domanda e aggiorna i totali.
+- Il reveal calcola una vista pubblica deterministica dei punti della domanda, senza modificare ancora i totali persistenti.
 - Il display evidenzia la risposta corretta e dispone vicino a ciascuna risposta gli avatar dei giocatori che l'hanno scelta.
 - Chi non risponde non viene associato a un'opzione e riceve zero punti.
 - Il telefono mostra risposta corretta, correttezza della propria scelta, punti ottenuti e totale.
 - La classifica può essere mostrata dopo la rivelazione; non è richiesta una visualizzazione statistica separata oltre agli avatar.
-- La prima implementazione del reveal pubblica soluzione, distribuzione e non votanti senza assegnare ancora punti; scoring e classifica restano una tranche successiva.
+- La classifica provvisoria durante il reveal include l’anteprima dei punti correnti; l’assegnazione autorevole avviene al comando host successivo.
 
 ### RF-10 — Domanda successiva
 
 - Dopo la rivelazione l'host può aprire la domanda successiva congelata.
-- Il sistema aggiorna la domanda corrente, azzera `voted_count` e torna a `voting_open` in un'unica operazione.
-- I punteggi cumulativi restano invariati fino alla rivelazione successiva.
+- Un’unica operazione atomica valuta i voti, registra `is_correct` e `points_awarded`, aggiorna i totali e impedisce una seconda assegnazione della stessa domanda.
+- Il sistema aggiorna la domanda corrente, azzera `voted_count` e torna a `voting_open`; dopo l’ultima domanda passa invece a `finished` e valorizza `finished_at`.
+- Risposta corretta, errata e assente valgono rispettivamente i punti congelati della domanda, zero e zero, senza bonus velocità.
 
 ### RF-11 — Fine partita
 
@@ -253,7 +254,7 @@ L'MVP è accettato quando, sul deploy Vercel collegato a Supabase:
 8. prima del reveal nessun payload pubblico espone soluzione, distribuzione o relazione giocatore-risposta;
 9. ogni primo voto incrementa il contatore una volta e una modifica non lo incrementa;
 10. dopo la chiusura nessun voto nuovo o modificato viene accettato;
-11. soltanto il reveal assegna i punti una volta, evidenzia la risposta corretta e mostra gli avatar accanto alle risposte scelte;
+11. il reveal mostra soluzione e anteprima, mentre il successivo comando host assegna i punti una volta e avanza o termina;
 12. refresh e breve disconnessione ricostruiscono lo stato senza duplicazioni;
 13. l'ultima domanda porta a una classifica finale stabile;
 14. lint, typecheck e build di produzione terminano con successo.

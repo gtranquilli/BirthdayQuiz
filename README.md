@@ -13,9 +13,8 @@ display ricevono lo stesso stato pubblico tramite Realtime. Durante
 `voting_open` il voto viene salvato atomicamente e la scelta personale viene
 recuperata dopo refresh. L’host può chiudere la votazione e, con un’azione
 separata, mostrare soluzione, avatar raggruppati e non votanti in Realtime.
-
-Scoring, domande successive e classifica restano da implementare secondo la
-roadmap MVP al 6 agosto 2026.
+Dopo il reveal conferma il risultato: i punti vengono assegnati una sola volta
+e la sessione apre la domanda successiva oppure termina con la classifica finale.
 
 ## MVP
 
@@ -49,9 +48,9 @@ Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `fi
 | Rotta | Utente | Responsabilità |
 | --- | --- | --- |
 | `/` | Partecipante | Inserimento di codice sessione e nickname |
-| `/play/[code]` | Partecipante | Attesa, voto persistente, recovery ed esito personale dopo il reveal |
+| `/play/[code]` | Partecipante | Attesa, voto persistente, recovery, punti ed esito finale |
 | `/host` | Host | Accesso, configurazione, creazione e stanze recenti |
-| `/host/[code]` | Host | Gestione lobby, avvio, chiusura voti e reveal della domanda corrente |
+| `/host/[code]` | Host | Gestione lobby, transizioni, scoring, avanzamento e fine partita |
 | `/display/[code]` | Pubblico | Lobby, domanda, conteggio, reveal e classifica |
 
 ## Architettura in breve

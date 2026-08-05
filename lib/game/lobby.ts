@@ -11,6 +11,12 @@ export interface PublicLobbyPlayer {
   readonly avatarKey: AvatarKey;
 }
 
+export interface PublicLeaderboardPlayer extends PublicLobbyPlayer {
+  readonly rank: number;
+  readonly score: number;
+  readonly currentPoints: number;
+}
+
 export interface PublicGameAnswerOption {
   readonly id: string;
   readonly text: string;
@@ -45,6 +51,7 @@ interface PublicGameSnapshotBase {
   readonly totalQuestionCount: number;
   readonly votedCount: number;
   readonly players: readonly PublicLobbyPlayer[];
+  readonly leaderboard: readonly PublicLeaderboardPlayer[];
 }
 
 export interface PublicLobbyGameSnapshot extends PublicGameSnapshotBase {
@@ -74,8 +81,8 @@ export interface PublicAnswerRevealedGameSnapshot
 
 export interface PublicFinishedGameSnapshot extends PublicGameSnapshotBase {
   readonly phase: 'finished';
-  readonly currentQuestionIndex: number | null;
-  readonly currentQuestion: PublicGameQuestion | null;
+  readonly currentQuestionIndex: number;
+  readonly currentQuestion: null;
   readonly correctOptionId: null;
   readonly nonVoters: readonly PublicLobbyPlayer[];
 }
@@ -132,7 +139,8 @@ function parsePublicPlayers(value: unknown): PublicLobbyPlayer[] | null {
   }
 
   const players: PublicLobbyPlayer[] = [];
-  const playerKeys = new Set<string>();
+  const nicknames = new Set<string>();
+  const avatarKeys = new Set<AvatarKey>();
 
   for (const player of value) {
     if (
@@ -147,17 +155,86 @@ function parsePublicPlayers(value: unknown): PublicLobbyPlayer[] | null {
       nickname: player.nickname,
       avatarKey: player.avatar_key,
     };
-    const playerKey = getPublicPlayerKey(parsedPlayer);
+    const normalizedNickname = parsedPlayer.nickname.trim().toLowerCase();
 
-    if (playerKeys.has(playerKey)) {
+    if (
+      normalizedNickname.length === 0 ||
+      nicknames.has(normalizedNickname) ||
+      avatarKeys.has(parsedPlayer.avatarKey)
+    ) {
       return null;
     }
 
-    playerKeys.add(playerKey);
+    nicknames.add(normalizedNickname);
+    avatarKeys.add(parsedPlayer.avatarKey);
     players.push(parsedPlayer);
   }
 
   return players;
+}
+
+function parsePublicLeaderboard(
+  value: unknown,
+  players: readonly PublicLobbyPlayer[],
+): PublicLeaderboardPlayer[] | null {
+  if (!Array.isArray(value) || value.length !== players.length) {
+    return null;
+  }
+
+  const knownPlayers = new Set(players.map(getPublicPlayerKey));
+  const leaderboardPlayers = new Set<string>();
+  const leaderboard: PublicLeaderboardPlayer[] = [];
+  let previousScore: number | null = null;
+  let previousRank = 0;
+
+  for (const [index, entry] of value.entries()) {
+    if (
+      !isRecord(entry) ||
+      typeof entry.nickname !== 'string' ||
+      !isAvatarKey(entry.avatar_key) ||
+      typeof entry.rank !== 'number' ||
+      !Number.isInteger(entry.rank) ||
+      entry.rank < 1 ||
+      typeof entry.score !== 'number' ||
+      !Number.isInteger(entry.score) ||
+      entry.score < 0 ||
+      typeof entry.current_points !== 'number' ||
+      !Number.isInteger(entry.current_points) ||
+      entry.current_points < 0 ||
+      entry.current_points > entry.score
+    ) {
+      return null;
+    }
+
+    const playerKey = getPublicPlayerKey({
+      nickname: entry.nickname,
+      avatarKey: entry.avatar_key,
+    });
+    const expectedRank =
+      previousScore === entry.score ? previousRank : index + 1;
+
+    if (
+      !knownPlayers.has(playerKey) ||
+      leaderboardPlayers.has(playerKey) ||
+      entry.rank !== expectedRank ||
+      (previousScore !== null && entry.score > previousScore)
+    ) {
+      return null;
+    }
+
+    leaderboardPlayers.add(playerKey);
+    previousScore = entry.score;
+    previousRank = entry.rank;
+    leaderboard.push({
+      nickname: entry.nickname,
+      avatarKey: entry.avatar_key,
+      rank: entry.rank,
+      score: entry.score,
+      currentPoints: entry.current_points,
+    });
+  }
+
+  return leaderboard;
 }
 
 function parsePublicQuestion(
@@ -304,6 +381,16 @@ export function parsePublicGameSnapshot(
     return null;
   }
 
+  const leaderboard = parsePublicLeaderboard(value.leaderboard, players);
+
+  if (
+    leaderboard === null ||
+    (value.phase !== 'answer_revealed' &&
+      leaderboard.some((player) => player.currentPoints !== 0))
+  ) {
+    return null;
+  }
+
   const commonSnapshot = {
     code: value.code,
     quizTitle: value.quiz_title,
@@ -312,6 +399,7 @@ export function parsePublicGameSnapshot(
     totalQuestionCount: value.total_question_count,
     votedCount: value.voted_count,
     players,
+    leaderboard,
   };
 
   if (value.phase === 'lobby') {
@@ -340,7 +428,10 @@ export function parsePublicGameSnapshot(
 
     if (
       value.current_question_index === null ||
+      value.total_question_count < 1 ||
+      value.current_question_index >= value.total_question_count ||
       currentQuestion === null ||
+      currentQuestion.position !== value.current_question_index + 1 ||
       value.correct_option_id !== null ||
       !Array.isArray(value.non_voters) ||
       value.non_voters.length !== 0
@@ -364,7 +455,10 @@ export function parsePublicGameSnapshot(
 
     if (
       value.current_question_index === null ||
+      value.total_question_count < 1 ||
+      value.current_question_index >= value.total_question_count ||
       currentQuestion === null ||
+      currentQuestion.position !== value.current_question_index + 1 ||
       typeof value.correct_option_id !== 'string' ||
       nonVoters === null
     ) {
@@ -430,14 +524,13 @@ export function parsePublicGameSnapshot(
     };
   }
 
-  const currentQuestion =
-    value.current_question === null
-      ? null
-      : parsePublicQuestion(value.current_question, false);
-
   if (
     value.phase !== 'finished' ||
-    (value.current_question !== null && currentQuestion === null) ||
+    value.total_question_count < 1 ||
+    value.current_question_index === null ||
+    value.current_question_index !== value.total_question_count - 1 ||
+    value.current_question !== null ||
+    value.voted_count !== 0 ||
     value.correct_option_id !== null ||
     !Array.isArray(value.non_voters) ||
     value.non_voters.length !== 0
@@ -449,7 +542,7 @@ export function parsePublicGameSnapshot(
     ...commonSnapshot,
     phase: 'finished',
     currentQuestionIndex: value.current_question_index,
-    currentQuestion,
+    currentQuestion: null,
     correctOptionId: null,
     nonVoters: [],
   };

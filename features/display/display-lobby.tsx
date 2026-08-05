@@ -1,6 +1,7 @@
 'use client';
 
 import { AvatarBadge } from '@/components/avatar-badge';
+import { Leaderboard } from '@/components/leaderboard';
 import { normalizeGameCode } from '@/lib/game/lobby';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
@@ -38,6 +39,31 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
             Riprova
           </button>
         </section>
+      </main>
+    );
+  }
+
+  if (snapshot.phase === 'finished') {
+    return (
+      <main className='min-h-screen bg-slate-950 px-8 py-8 text-white lg:px-16 lg:py-12'>
+        <div className='mx-auto max-w-5xl'>
+          <header className='text-center'>
+            <p className='text-sm font-bold uppercase tracking-[0.3em] text-indigo-300'>
+              Quiz terminato · Stanza {snapshot.code}
+            </p>
+            <h1 className='mt-3 text-4xl font-black lg:text-6xl'>
+              {snapshot.quizTitle}
+            </h1>
+          </header>
+          <div className='mt-8'>
+            <Leaderboard
+              dark
+              large
+              entries={snapshot.leaderboard}
+              title='Classifica finale'
+            />
+          </div>
+        </div>
       </main>
     );
   }
@@ -135,6 +161,14 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
               ))}
             </section>
           ) : null}
+
+          <div className='mt-5'>
+            <Leaderboard
+              dark
+              entries={snapshot.leaderboard}
+              title='Classifica provvisoria'
+            />
+          </div>
         </div>
       </main>
     );

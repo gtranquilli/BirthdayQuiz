@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
+import { Leaderboard } from '@/components/leaderboard';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
 import { normalizeGameCode } from '@/lib/game/lobby';
@@ -120,6 +121,7 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
   const [starting, setStarting] = useState(false);
   const [closingVoting, setClosingVoting] = useState(false);
   const [revealingAnswer, setRevealingAnswer] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
 
   const loadSession = useCallback(async () => {
     const response = await fetch(`/api/host/game-sessions/${code}`, {
@@ -315,6 +317,37 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
     }
   }
 
+  async function advanceGame() {
+    setAdvancing(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/host/game-sessions/${code}/advance`, {
+        method: 'POST',
+      });
+      const payload = await readJson(response);
+
+      if (!response.ok) {
+        throw new Error(
+          getErrorMessage(
+            payload,
+            'Impossibile assegnare il punteggio e avanzare.',
+          ),
+        );
+      }
+
+      await Promise.all([loadSession(), refresh()]);
+    } catch (advanceError) {
+      setError(
+        advanceError instanceof Error
+          ? advanceError.message
+          : 'Impossibile assegnare il punteggio e avanzare.',
+      );
+    } finally {
+      setAdvancing(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
@@ -347,6 +380,9 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
   const currentQuestion = snapshot?.currentQuestion ?? null;
   const participantCount =
     snapshot?.participantCount ?? session.participantCount;
+  const hasNextQuestion =
+    snapshot?.phase === 'answer_revealed' &&
+    snapshot.currentQuestionIndex + 1 < snapshot.totalQuestionCount;
 
   return (
     <main className='min-h-screen bg-slate-100 px-4 py-8 sm:px-6'>
@@ -439,6 +475,20 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
               disabled={revealingAnswer}
             >
               {revealingAnswer ? 'Reveal in corso…' : 'Mostra risposta'}
+            </button>
+          ) : null}
+          {effectivePhase === 'answer_revealed' ? (
+            <button
+              className='rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50'
+              type='button'
+              onClick={() => void advanceGame()}
+              disabled={advancing}
+            >
+              {advancing
+                ? 'Conferma punteggio…'
+                : hasNextQuestion
+                  ? 'Prossima domanda'
+                  : 'Termina quiz'}
             </button>
           ) : null}
           <a
@@ -573,6 +623,20 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
               ))}
             </ol>
           </section>
+        ) : null}
+
+        {snapshot && snapshot.phase !== 'lobby' ? (
+          <div className='mt-7'>
+            <Leaderboard
+              entries={snapshot.leaderboard}
+              title={
+                snapshot.phase === 'finished'
+                  ? 'Classifica finale'
+                  : 'Classifica provvisoria'
+              }
+              large={snapshot.phase === 'finished'}
+            />
+          </div>
         ) : null}
 
         <section className='mt-7 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>

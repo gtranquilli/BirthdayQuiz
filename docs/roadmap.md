@@ -99,7 +99,7 @@ Verifica: host, display e telefoni ricostruiscono lo stato dopo refresh ed event
 ### 8. Apertura e voto anonimo
 
 - [x] Collegare `start` alla creazione atomica delle copie ordinate di sessione.
-- [ ] Collegare `next` dopo il reveal.
+- [x] Collegare l’avanzamento atomico dopo il reveal.
 - [x] Mostrare la prima domanda e le quattro risposte nell'ordine congelato.
 - [x] Implementare `submit_vote` con modifica consentita solo in `voting_open`.
 - [x] Incrementare `voted_count` soltanto al primo voto.
@@ -112,19 +112,19 @@ Verifica: nessun client pubblico ottiene soluzione, distribuzione o associazione
 
 - [x] Collegare i comandi host `close` e `reveal` come transizioni distinte.
 - [x] Bloccare ogni voto dopo `close`, anche tramite chiamata manuale.
-- [ ] Integrare scoring idempotente nella transizione di reveal.
+- [x] Integrare scoring idempotente nel comando di conferma successivo al reveal.
 - [x] Dopo il reveal evidenziare la soluzione e mostrare gli avatar vicino alle risposte scelte.
-- [x] Mostrare l’esito personale senza punti.
-- [ ] Mostrare punti configurati e classifica.
+- [x] Mostrare l’esito personale con punti della domanda e totale.
+- [x] Mostrare classifica provvisoria.
 
 Verifica: doppio reveal non duplica punti; le associazioni avatar-risposta diventano disponibili soltanto in `answer_revealed`.
 
 ### 10. Ciclo completo e fine
 
-- [ ] Passare alla domanda seguente azzerando solo il contatore corrente.
-- [ ] Conservare punteggi cumulativi e ordine di sessione.
-- [ ] Abilitare `finish` solo dopo il reveal dell'ultima domanda.
-- [ ] Mostrare la classifica finale su display e telefoni.
+- [x] Passare alla domanda seguente azzerando solo il contatore corrente.
+- [x] Conservare punteggi cumulativi e ordine di sessione.
+- [x] Abilitare `finished` solo dopo il reveal dell'ultima domanda.
+- [x] Mostrare la classifica finale su display e telefoni.
 
 Verifica: la sessione completa non richiede interventi manuali sul database.
 
@@ -149,7 +149,7 @@ Verifica: testi reali, quattro risposte e avatar non causano tagli bloccanti.
 - [ ] Modificare un contenuto sorgente in ambiente di test e verificare che la sessione resti invariata.
 - [ ] Tentare lettura di soluzioni e risposte altrui prima del reveal.
 - [ ] Tentare voto su sessione, domanda o opzione errata e fuori fase.
-- [ ] Provare `reveal` e `next` concorrenti e verificare i log.
+- [ ] Provare `reveal` e `advance` concorrenti e verificare i log.
 
 Verifica: gli input non validi falliscono senza dati parziali, leak o punteggi duplicati.
 

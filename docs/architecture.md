@@ -35,7 +35,8 @@ Display -------------> snapshot sicuro + Realtime <---------------+
 pubblico. Contiene codice, titolo, fase, capienza, domanda corrente con opzioni,
 conteggio aggregato dei voti e coppie nickname/avatar. Trigger database la
 mantengono sincronizzata; è l'unica relazione di gioco pubblicata in Realtime e
-non contiene identificativi Auth, record voto o punteggi. Soltanto durante
+non contiene identificativi Auth né record voto. Espone una leaderboard pubblica
+essenziale con nickname, avatar, posizione e punteggio. Soltanto durante
 `answer_revealed` aggiunge soluzione, conteggi per opzione, nickname/avatar
 raggruppati e non votanti.
 
@@ -56,6 +57,7 @@ app/
   api/host/game-sessions/[code]/start/route.ts
   api/host/game-sessions/[code]/close/route.ts
   api/host/game-sessions/[code]/reveal/route.ts
+  api/host/game-sessions/[code]/advance/route.ts
   api/host/game-sessions/[code]/players/[playerId]/route.ts
   api/host/game-sessions/[id]/transition/route.ts
   api/game-sessions/[code]/snapshot/route.ts
@@ -88,7 +90,7 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 - modifica la configurazione per categoria e inserisce la capienza senza valore predefinito;
 - chiede conferma prima di creare la sessione;
 - riapre le sessioni recenti e, in lobby, rimuove giocatori o annulla la stanza;
-- invia comandi espliciti `start`, `close`, `reveal`, `next`, `finish`.
+- invia comandi espliciti `start`, `close`, `reveal` e `advance`.
 
 ### Display pubblico
 
@@ -290,7 +292,7 @@ Vincoli univoci `(session_id, user_id)` e `(session_id, nickname_normalized)`. `
 | `participant_id` | `uuid` FK |  |
 | `session_option_id` | `uuid` FK | Relazione da rivelare solo dopo il reveal |
 | `submitted_at` | `timestamptz` | Aggiornato al cambio scelta |
-| `is_correct` | `boolean` nullable | Valorizzato al reveal |
+| `is_correct` | `boolean` nullable | Valorizzato allo scoring dopo il reveal |
 | `points_awarded` | `integer` nullable | Guardia di idempotenza |
 
 Vincolo univoco `(session_id, session_question_id, participant_id)`. I contatori denormalizzati su `game_sessions` evitano di esporre `votes` a Realtime.
@@ -348,9 +350,8 @@ Supabase Auth anonimo; una chiamata priva di `auth.uid()` viene rifiutata.
 
 - `start`: `lobby` → `voting_open`, creando lo snapshot e aprendo la prima domanda;
 - `close_current_voting`: `voting_open` → `voting_closed`, congelando il conteggio e serializzandosi con `submit_vote` sulla riga sessione;
-- `reveal_current_answer`: `voting_closed` → `answer_revealed`, valorizzando `revealed_at` e pubblicando soluzione e gruppi avatar senza scoring in questa tranche;
-- `next`: `answer_revealed` → `voting_open` sulla domanda seguente, con `voted_count = 0`;
-- `finish`: `answer_revealed` → `finished` dopo l'ultima domanda.
+- `reveal_current_answer`: `voting_closed` → `answer_revealed`, valorizzando `revealed_at` e pubblicando soluzione, gruppi avatar e anteprima dei punti;
+- `score_and_advance_game_session`: da `answer_revealed` assegna atomicamente i punti una sola volta e passa a `voting_open` sulla domanda seguente con `voted_count = 0`, oppure a `finished` dopo l’ultima domanda.
 
 Ogni comando verifica la fase nel database. Retry o fase incompatibile non ripetono effetti; un conflitto restituisce lo snapshot aggiornato.
 
@@ -368,7 +369,10 @@ domanda corrente. La scelta personale viene recuperata separatamente con
 `get_my_current_vote`. Durante `voting_open` e `voting_closed` soluzione e
 distribuzione sono assenti; in `answer_revealed` ogni opzione include
 `is_correct`, `vote_count` e soltanto nickname/avatar dei votanti, più una lista
-separata dei non votanti.
+separata dei non votanti. La leaderboard è ordinata per punteggio, con posizione
+condivisa per i pari merito e ordine visuale stabile basato sull’ingresso. In
+`answer_revealed` include una preview deterministica dei punti correnti; dopo
+`advance` gli stessi punti sono persistiti in `players.total_score` e `votes`.
 
 La proiezione condizionale è l’unico confine pubblico che rivela la relazione
 avatar-opzione. Non espone token, identificativi Auth, `player_id`, record
@@ -397,8 +401,8 @@ Sequenza consigliata:
 4. I partecipanti entrano in lobby fino alla capienza e ricevono un avatar stabile.
 5. L'host avvia: snapshot e ordine vengono congelati atomicamente e la prima domanda diventa pubblica.
 6. L'host chiude esplicitamente il voto senza mostrare soluzione o associazioni.
-7. L'host rivela: soluzione e avatar compaiono accanto alle risposte scelte; lo scoring resta da integrare.
-8. L'host apre la domanda successiva oppure termina con la classifica finale.
+7. L'host rivela: soluzione, avatar e anteprima dei punti compaiono in Realtime.
+8. L'host conferma: lo scoring viene persistito e la sessione apre la domanda successiva oppure termina con la classifica finale.
 
 ## 11. Sicurezza host e configurazione
 
