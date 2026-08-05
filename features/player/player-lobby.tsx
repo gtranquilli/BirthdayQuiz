@@ -81,6 +81,7 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
   const [player, setPlayer] = useState<StoredPlayerEntry | null>(null);
   const [recovering, setRecovering] = useState(true);
   const [playerError, setPlayerError] = useState<string | null>(null);
+  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
 
   const recoverPlayer = useCallback(async () => {
     const storedPlayer = readStoredPlayer(code);
@@ -173,6 +174,76 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
             Torna all’ingresso
           </Link>
         </section>
+      </main>
+    );
+  }
+
+  if (snapshot.phase === 'voting_open' && snapshot.currentQuestion) {
+    const question = snapshot.currentQuestion;
+
+    return (
+      <main className='min-h-screen bg-slate-100 px-4 py-6'>
+        <div className='mx-auto max-w-lg'>
+          <header className='flex items-center justify-between gap-3'>
+            <div className='flex min-w-0 items-center gap-3'>
+              <AvatarBadge avatarKey={player.avatarKey} size='sm' />
+              <div className='min-w-0'>
+                <p className='truncate font-bold text-slate-950'>{player.nickname}</p>
+                <p className='text-xs font-semibold text-indigo-700'>
+                  Domanda {(snapshot.currentQuestionIndex ?? 0) + 1} /{' '}
+                  {snapshot.totalQuestionCount}
+                </p>
+              </div>
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                connectionStatus === 'connected'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-900'
+              }`}
+            >
+              {CONNECTION_LABELS[connectionStatus]}
+            </span>
+          </header>
+
+          <section className='mt-6 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
+            <p className='text-sm font-bold uppercase tracking-wide text-indigo-700'>
+              {question.category}
+            </p>
+            <h1 className='mt-3 text-2xl font-black leading-tight text-slate-950'>
+              {question.prompt}
+            </h1>
+
+            <div className='mt-6 grid gap-3'>
+              {question.options.map((option) => {
+                const selected = selectedOptionId === option.id;
+
+                return (
+                  <button
+                    aria-pressed={selected}
+                    className={`min-h-16 rounded-2xl px-4 py-3 text-left font-bold ring-2 transition-colors ${
+                      selected
+                        ? 'bg-indigo-600 text-white ring-indigo-600'
+                        : 'bg-slate-50 text-slate-900 ring-slate-200 hover:ring-indigo-300'
+                    }`}
+                    key={option.id}
+                    type='button'
+                    onClick={() => setSelectedOptionId(option.id)}
+                  >
+                    <span className='mr-3 opacity-70'>{option.position}.</span>
+                    {option.text}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className='mt-5 rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-900'>
+              {selectedOptionId
+                ? 'Scelta locale selezionata. Il voto non viene ancora inviato.'
+                : 'Seleziona una risposta. In questa fase il voto non viene ancora salvato.'}
+            </p>
+          </section>
+        </div>
       </main>
     );
   }

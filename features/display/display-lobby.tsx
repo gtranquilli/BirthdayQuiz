@@ -41,6 +41,65 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
     );
   }
 
+  if (snapshot.phase === 'voting_open' && snapshot.currentQuestion) {
+    const question = snapshot.currentQuestion;
+
+    return (
+      <main className='min-h-screen bg-slate-950 px-8 py-7 text-white lg:px-14 lg:py-10'>
+        <div className='mx-auto flex min-h-[calc(100vh-5rem)] max-w-7xl flex-col'>
+          <header className='flex items-start justify-between gap-8'>
+            <div>
+              <p className='text-sm font-bold uppercase tracking-[0.3em] text-indigo-300'>
+                {question.category}
+              </p>
+              <p className='mt-2 text-xl font-bold text-slate-300'>
+                Domanda {(snapshot.currentQuestionIndex ?? 0) + 1} /{' '}
+                {snapshot.totalQuestionCount}
+              </p>
+            </div>
+            <span
+              className={`rounded-full px-4 py-2 text-sm font-bold ${
+                connectionStatus === 'connected'
+                  ? 'bg-emerald-400/15 text-emerald-300'
+                  : 'bg-amber-400/15 text-amber-200'
+              }`}
+            >
+              {connectionStatus === 'connected' ? 'In tempo reale' : 'Riconnessione…'}
+            </span>
+          </header>
+
+          <section className='my-auto py-8'>
+            <h1 className='mx-auto max-w-5xl text-center text-4xl font-black leading-tight lg:text-6xl'>
+              {question.prompt}
+            </h1>
+            <ol className='mx-auto mt-10 grid max-w-6xl gap-5 md:grid-cols-2'>
+              {question.options.map((option) => (
+                <li
+                  className='flex min-h-28 items-center rounded-3xl bg-white/10 px-7 py-5 text-2xl font-bold ring-1 ring-white/15 lg:text-3xl'
+                  key={option.id}
+                >
+                  <span className='mr-5 grid size-11 shrink-0 place-items-center rounded-full bg-indigo-500 text-lg'>
+                    {option.position}
+                  </span>
+                  {option.text}
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <footer className='flex items-center justify-between gap-6 border-t border-white/10 pt-5'>
+            <p className='text-sm font-bold uppercase tracking-[0.2em] text-slate-400'>
+              Stanza {snapshot.code}
+            </p>
+            <p className='text-2xl font-black'>
+              Voti {snapshot.votedCount} / {snapshot.participantCount}
+            </p>
+          </footer>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className='min-h-screen bg-slate-950 px-8 py-7 text-white lg:px-14 lg:py-10'>
       <div className='mx-auto flex min-h-[calc(100vh-5rem)] max-w-7xl flex-col'>

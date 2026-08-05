@@ -14,7 +14,7 @@ Le nuove astrazioni servono a rendere riutilizzabile il motore, non ad ampliare 
 | Contenuti | Quiz → categorie → domande → quattro risposte, una corretta |
 | Punteggio | Valore positivo configurato per domanda nel seed; nessun bonus velocità |
 | Composizione | Preset con conteggi per categoria, modificabili solo per la nuova sessione |
-| Sessione | Configurazione, domande, risposte, soluzioni, punteggi e ordine congelati alla creazione |
+| Sessione | Configurazione congelata alla creazione; domande, risposte, soluzioni, punteggi e ordine congelati all'avvio |
 | Capienza | Valore obbligatorio inserito dall'host, senza default, confermato prima della creazione |
 | Privacy | Prima del reveal solo conteggio aggregato; dopo il reveal avatar sulle risposte scelte |
 | Fasi | `lobby`, `voting_open`, `voting_closed`, `answer_revealed`, `finished` |
@@ -50,7 +50,7 @@ Verifica: un quiz valido è riutilizzabile e un contenuto incompleto viene rifiu
 - [ ] Creare partecipanti e risposte con vincoli univoci e contatori persistenti.
 - [ ] Implementare la macchina a stati invariata.
 
-Verifica: una sessione non dipende dai contenuti live dopo la creazione.
+Verifica: una sessione avviata non dipende più dai contenuti live.
 
 ### 4. Seed iniziale
 
@@ -66,8 +66,8 @@ Verifica: il quiz completo è interrogabile, mentre le soluzioni restano inacces
 - [ ] Mostrare quiz, preset e conteggi per categoria modificabili in `/host`.
 - [ ] Lasciare vuoto “Numero massimo giocatori” e accettare solo interi positivi.
 - [ ] Mostrare “Creare una partita con massimo N giocatori?” prima della creazione.
-- [ ] Validare disponibilità per categoria, estrarre e ordinare le domande in transazione.
-- [ ] Copiare contenuti, quattro opzioni, soluzione e punteggio nella sessione.
+- [ ] Validare disponibilità per categoria e salvare la configurazione della lobby.
+- [ ] Demandare estrazione e copia atomica all'azione host di avvio.
 
 Verifica: configurazioni impossibili non creano dati parziali; modifiche successive al quiz non cambiano la sessione.
 
@@ -98,8 +98,9 @@ Verifica: host, display e telefoni ricostruiscono lo stato dopo refresh ed event
 
 ### 8. Apertura e voto anonimo
 
-- [ ] Collegare `start` e `next` alle copie ordinate di sessione.
-- [ ] Mostrare sempre le quattro risposte nell'ordine congelato.
+- [x] Collegare `start` alla creazione atomica delle copie ordinate di sessione.
+- [ ] Collegare `next` dopo il reveal.
+- [x] Mostrare la prima domanda e le quattro risposte nell'ordine congelato.
 - [ ] Implementare `submit_vote` con modifica consentita solo in `voting_open`.
 - [ ] Incrementare `voted_count` soltanto al primo voto.
 - [ ] Mostrare sul display solo `voted_count / participant_count` come dato sui voti.
@@ -187,7 +188,8 @@ Non si tagliano snapshot di sessione, RLS, capienza atomica, fasi separate, priv
 | Scenario | Risultato atteso |
 | --- | --- |
 | Preset richiede più domande di quelle disponibili | Creazione rifiutata senza sessione parziale |
-| Quiz sorgente cambia dopo la creazione | Contenuti e ordine della sessione non cambiano |
+| Quiz sorgente diventa insufficiente prima dell'avvio | Avvio rifiutato senza snapshot parziale |
+| Quiz sorgente cambia dopo l'avvio | Contenuti e ordine della sessione non cambiano |
 | Capienza non inserita | Creazione bloccata; nessun valore implicito |
 | Due join concorrenti sull'ultimo posto | Entra un solo nuovo partecipante |
 | Due utenti scelgono lo stesso nickname | Il secondo riceve un errore chiaro |

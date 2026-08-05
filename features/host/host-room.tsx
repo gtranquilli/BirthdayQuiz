@@ -110,12 +110,13 @@ function parseSession(value: unknown): HostRoomSession | null {
 export function HostRoom({ code: rawCode }: HostRoomProps) {
   const router = useRouter();
   const code = normalizeGameCode(rawCode);
-  const { snapshot, connectionStatus } = useLobbySession(code);
+  const { snapshot, connectionStatus, refresh } = useLobbySession(code);
   const [session, setSession] = useState<HostRoomSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [removingPlayerId, setRemovingPlayerId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const loadSession = useCallback(async () => {
     const response = await fetch(`/api/host/game-sessions/${code}`, {
@@ -173,7 +174,7 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
         );
       }
 
-      await loadSession();
+      await Promise.all([loadSession(), refresh()]);
     } catch (removeError) {
       setError(
         removeError instanceof Error
@@ -217,6 +218,32 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
     }
   }
 
+  async function startGame() {
+    setStarting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/host/game-sessions/${code}/start`, {
+        method: 'POST',
+      });
+      const payload = await readJson(response);
+
+      if (!response.ok) {
+        throw new Error(getErrorMessage(payload, 'Impossibile avviare il quiz.'));
+      }
+
+      await loadSession();
+    } catch (startError) {
+      setError(
+        startError instanceof Error
+          ? startError.message
+          : 'Impossibile avviare il quiz.',
+      );
+    } finally {
+      setStarting(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
@@ -244,7 +271,11 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
     );
   }
 
-  const isLobby = session.phase === 'lobby';
+  const effectivePhase = snapshot?.phase ?? session.phase;
+  const isLobby = effectivePhase === 'lobby';
+  const currentQuestion = snapshot?.currentQuestion ?? null;
+  const participantCount =
+    snapshot?.participantCount ?? session.participantCount;
 
   return (
     <main className='min-h-screen bg-slate-100 px-4 py-8 sm:px-6'>
@@ -291,12 +322,12 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
           <dl className='grid gap-4 rounded-2xl bg-white p-5 ring-1 ring-slate-200 sm:col-span-2 sm:grid-cols-3'>
             <div>
               <dt className='text-xs font-bold uppercase text-slate-500'>Fase</dt>
-              <dd className='mt-1 font-bold text-slate-950'>{session.phase}</dd>
+              <dd className='mt-1 font-bold text-slate-950'>{effectivePhase}</dd>
             </div>
             <div>
               <dt className='text-xs font-bold uppercase text-slate-500'>Giocatori</dt>
               <dd className='mt-1 font-bold text-slate-950'>
-                {session.participantCount} / {session.maxPlayers}
+                {participantCount} / {session.maxPlayers}
               </dd>
             </div>
             <div>
@@ -309,6 +340,16 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
         </section>
 
         <div className='mt-5 flex flex-wrap gap-3'>
+          {isLobby ? (
+            <button
+              className='rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50'
+              type='button'
+              onClick={() => void startGame()}
+              disabled={participantCount < 1 || starting}
+            >
+              {starting ? 'Avvio in corso…' : 'Avvia quiz'}
+            </button>
+          ) : null}
           <a
             className='rounded-xl bg-slate-900 px-4 py-2.5 font-semibold text-white hover:bg-slate-700'
             href={`/display/${session.code}`}
@@ -331,6 +372,37 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
           <p className='mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900'>
             La gestione dei giocatori è disponibile soltanto durante la lobby.
           </p>
+        ) : null}
+
+        {effectivePhase === 'voting_open' && currentQuestion ? (
+          <section className='mt-7 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <p className='text-sm font-bold uppercase tracking-wide text-indigo-700'>
+                Domanda {(snapshot?.currentQuestionIndex ?? 0) + 1} /{' '}
+                {snapshot?.totalQuestionCount ?? 0}
+              </p>
+              <p className='text-sm font-semibold text-slate-600'>
+                Voti ricevuti: {snapshot?.votedCount ?? 0} /{' '}
+                {participantCount}
+              </p>
+            </div>
+            <p className='mt-2 text-sm font-semibold text-slate-500'>
+              {currentQuestion.category}
+            </p>
+            <h2 className='mt-2 text-2xl font-black text-slate-950'>
+              {currentQuestion.prompt}
+            </h2>
+            <ol className='mt-5 grid gap-3 sm:grid-cols-2'>
+              {currentQuestion.options.map((option) => (
+                <li
+                  className='rounded-xl bg-slate-50 px-4 py-3 font-semibold text-slate-800 ring-1 ring-slate-200'
+                  key={option.id}
+                >
+                  {option.position}. {option.text}
+                </li>
+              ))}
+            </ol>
+          </section>
         ) : null}
 
         <section className='mt-7 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>

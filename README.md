@@ -7,12 +7,12 @@ Questo repository, nato come BirthdayQuiz, descrive un Quiz Engine riutilizzabil
 ## Stato del progetto
 
 Lo scaffold Next.js, lo schema Supabase, il seed, la creazione sessione host e
-il flusso lobby sono presenti. I partecipanti possono scegliere nickname e
-avatar, entrare con Auth anonima e recuperare la propria identità dopo refresh;
-il display usa una proiezione pubblica sicura sincronizzata via Realtime.
+il primo game loop sono presenti. I partecipanti possono entrare con Auth
+anonima, recuperare la propria identità e vedere la prima domanda; host e
+display ricevono lo stesso stato pubblico tramite Realtime.
 
-Domande, voto, reveal, scoring e controllo host della partita restano da
-implementare secondo la roadmap MVP al 6 agosto 2026.
+Salvataggio e chiusura dei voti, reveal, scoring, domande successive e
+classifica restano da implementare secondo la roadmap MVP al 6 agosto 2026.
 
 ## MVP
 
@@ -22,7 +22,7 @@ implementare secondo la roadmap MVP al 6 agosto 2026.
 - Quiz e preset caricati tramite seed; “Compleanno di Giorgio” è il primo dataset.
 - Preset con quantità per categoria, modificabili dall'host per la nuova sessione.
 - “Numero massimo giocatori” obbligatorio, senza valore predefinito e con conferma esplicita.
-- Sessione separata dal quiz, con configurazione, domande, risposte, soluzioni e ordine congelati alla creazione.
+- Sessione separata dal quiz, con configurazione salvata alla creazione e domande, risposte, soluzioni e ordine congelati atomicamente all'avvio.
 - Accesso partecipanti senza email tramite Supabase Auth anonimo.
 - Voto anonimo fino al reveal: durante apertura e chiusura sul display sono visibili solo domanda, quattro risposte e conteggio dei votanti.
 - Reveal separato in stile Among Us: risposta corretta e avatar accanto alle risposte scelte, poi punti e classifica.
@@ -34,9 +34,9 @@ Restano fuori scope editor completo, marketplace, gestione utenti, creazione pub
 
 1. L'host sceglie quiz e preset e adatta i conteggi per categoria.
 2. Inserisce il massimo giocatori e conferma la creazione.
-3. Il sistema estrae e congela domande, quattro risposte, soluzioni, punteggi e ordine.
-4. I partecipanti entrano in lobby con nickname e avatar.
-5. L'host apre il voto, lo chiude e poi attiva separatamente il reveal.
+3. I partecipanti entrano in lobby con nickname e avatar.
+4. L'host avvia: il sistema estrae e congela domande, quattro risposte, soluzioni, punteggi e ordine, poi apre la prima domanda.
+5. L'host chiude il voto e poi attiva separatamente il reveal.
 6. Dopo ogni reveal può aprire la domanda successiva o terminare con la classifica finale.
 
 Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `finished`.
@@ -46,9 +46,9 @@ Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `fi
 | Rotta | Utente | Responsabilità |
 | --- | --- | --- |
 | `/` | Partecipante | Inserimento di codice sessione e nickname |
-| `/play/[code]` | Partecipante | Attesa, voto, esito personale e classifica |
+| `/play/[code]` | Partecipante | Attesa e selezione locale sulla prima domanda; voto persistente ancora non implementato |
 | `/host` | Host | Accesso, configurazione, creazione e stanze recenti |
-| `/host/[code]` | Host | Capienza, giocatori, rimozione e annullamento lobby |
+| `/host/[code]` | Host | Gestione lobby, avvio e stato pubblico della prima domanda |
 | `/display/[code]` | Pubblico | Lobby, domanda, conteggio, reveal e classifica |
 
 ## Architettura in breve

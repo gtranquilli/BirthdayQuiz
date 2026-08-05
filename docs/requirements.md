@@ -48,7 +48,7 @@ Prima di creare la sessione, l'host può modificare i conteggi per categoria pro
 - per ogni categoria siano disponibili abbastanza domande;
 - preset e categorie appartengano al quiz selezionato.
 
-Alla creazione, il sistema estrae le domande in base alla configurazione e ne congela contenuto, risposte, soluzione, punteggio e ordine nella sessione.
+Alla creazione, il sistema salva la configurazione effettiva per categoria. All'avvio, estrae le domande in base a tale configurazione e ne congela contenuto, risposte, soluzione, punteggio e ordine nella sessione.
 
 ## 5. Sessione di gioco
 
@@ -61,7 +61,7 @@ La sessione è distinta dal quiz sorgente e contiene almeno:
 - ordine definitivo delle domande e delle quattro risposte;
 - fase corrente, domanda corrente, conteggi e timestamp operativi.
 
-Una modifica successiva a quiz, categorie, domande, risposte o preset non deve cambiare una sessione già creata. Nell'MVP la configurazione non è modificabile dopo la creazione della sessione.
+Una modifica successiva a quiz, categorie, domande, risposte o preset non deve cambiare una sessione già avviata. Nell'MVP la configurazione non è modificabile dopo la creazione della sessione; se i contenuti diventano insufficienti prima dell'avvio, l'avvio fallisce senza snapshot parziali.
 
 ## 6. Requisiti funzionali
 
@@ -77,7 +77,7 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Può modificare i conteggi per categoria prima della creazione.
 - Deve compilare “Numero massimo giocatori” con un intero positivo. Il campo non ha un valore predefinito.
 - Prima della creazione, il sistema chiede conferma con il valore inserito, per esempio: “Creare una partita con massimo 7 giocatori?”.
-- Solo dopo la conferma il sistema valida la configurazione, estrae e congela le domande e genera un codice breve, casuale e univoco, consigliato di sei caratteri non ambigui.
+- Solo dopo la conferma il sistema valida e salva la configurazione e genera un codice breve, casuale e univoco, consigliato di sei caratteri non ambigui.
 - La sessione parte in `lobby`; il pannello mostra codice, URL del display, capienza e conteggio partecipanti.
 
 ### RF-03 — Ingresso partecipante
@@ -103,7 +103,9 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 
 ### RF-05 — Apertura domanda
 
-- L'azione host imposta la prima o la successiva domanda congelata e porta la sessione in `voting_open`.
+- L'avvio è consentito soltanto dalla `lobby` e richiede almeno un partecipante.
+- L'azione host estrae e congela atomicamente domande, quattro opzioni, soluzioni, punteggi e ordine deterministico della sessione, imposta l'indice corrente a zero e porta la sessione in `voting_open`.
+- Se le domande disponibili non rispettano la configurazione, l'operazione fallisce interamente con un errore comprensibile.
 - Display e telefoni mostrano testo e quattro risposte nell'ordine memorizzato nella sessione.
 - Il contatore dei voti parte da zero. Non è previsto un timer.
 
@@ -241,7 +243,7 @@ L'MVP è accettato quando, sul deploy Vercel collegato a Supabase:
 2. ogni domanda selezionabile ha quattro risposte, una soluzione e un punteggio configurato;
 3. l'host sceglie quiz e preset, modifica i conteggi e non può richiedere più domande di quelle disponibili;
 4. “Numero massimo giocatori” parte vuoto, accetta un intero positivo e compare nella conferma prima della creazione;
-5. la sessione conserva configurazione, domande estratte e ordine; modificare i contenuti sorgente non ne cambia lo snapshot;
+5. all'avvio la sessione congela configurazione, domande estratte e ordine; modificare poi i contenuti sorgente non ne cambia lo snapshot;
 6. il sistema non supera la capienza scelta e un refresh non duplica il partecipante;
 7. host, display e almeno due partecipanti completano lobby, voto, chiusura, rivelazione, domanda successiva e fine;
 8. prima del reveal nessun payload pubblico espone soluzione, distribuzione o relazione giocatore-risposta;

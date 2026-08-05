@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   GAME_CODE_PATTERN,
   normalizeGameCode,
-  parsePublicLobbySnapshot,
-  type PublicLobbySnapshot,
+  parsePublicGameSnapshot,
+  type PublicGameSnapshot,
 } from '@/lib/game/lobby';
 import { createClient } from '@/lib/supabase/client';
 
@@ -17,7 +17,7 @@ export type LobbyConnectionStatus =
   | 'error';
 
 interface LobbySessionState {
-  readonly snapshot: PublicLobbySnapshot | null;
+  readonly snapshot: PublicGameSnapshot | null;
   readonly loading: boolean;
   readonly error: string | null;
   readonly connectionStatus: LobbyConnectionStatus;
@@ -27,7 +27,7 @@ interface LobbySessionState {
 export function useLobbySession(rawCode: string): LobbySessionState {
   const code = useMemo(() => normalizeGameCode(rawCode), [rawCode]);
   const supabase = useMemo(() => createClient(), []);
-  const [snapshot, setSnapshot] = useState<PublicLobbySnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<PublicGameSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] =
@@ -43,7 +43,9 @@ export function useLobbySession(rawCode: string): LobbySessionState {
 
     const { data, error: queryError } = await supabase
       .from('lobby_public_sessions')
-      .select('code,quiz_title,phase,participant_count,max_players,players')
+      .select(
+        'code,quiz_title,phase,participant_count,max_players,current_question_index,total_question_count,current_question,voted_count,players',
+      )
       .eq('code', code)
       .maybeSingle();
 
@@ -60,7 +62,7 @@ export function useLobbySession(rawCode: string): LobbySessionState {
       return;
     }
 
-    const nextSnapshot = parsePublicLobbySnapshot(data);
+    const nextSnapshot = parsePublicGameSnapshot(data);
 
     if (!nextSnapshot) {
       setError('La lobby ha restituito dati non validi.');
@@ -85,7 +87,7 @@ export function useLobbySession(rawCode: string): LobbySessionState {
           filter: `code=eq.${code}`,
         },
         (payload: { new: unknown }) => {
-          const nextSnapshot = parsePublicLobbySnapshot(payload.new);
+          const nextSnapshot = parsePublicGameSnapshot(payload.new);
 
           if (nextSnapshot) {
             setSnapshot(nextSnapshot);
