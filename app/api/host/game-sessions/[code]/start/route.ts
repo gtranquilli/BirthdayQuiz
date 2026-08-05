@@ -199,6 +199,12 @@ export async function POST(
     });
 
     if (error) {
+      console.error('Supabase error in start_game_session', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
       return databaseErrorResponse(error.code, error.message);
     }
 
