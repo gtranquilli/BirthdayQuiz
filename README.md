@@ -9,10 +9,12 @@ Questo repository, nato come BirthdayQuiz, descrive un Quiz Engine riutilizzabil
 Lo scaffold Next.js, lo schema Supabase, il seed, la creazione sessione host e
 il primo game loop sono presenti. I partecipanti possono entrare con Auth
 anonima, recuperare la propria identità e vedere la prima domanda; host e
-display ricevono lo stesso stato pubblico tramite Realtime.
+display ricevono lo stesso stato pubblico tramite Realtime. Durante
+`voting_open` il voto viene salvato atomicamente e la scelta personale viene
+recuperata dopo refresh.
 
-Salvataggio e chiusura dei voti, reveal, scoring, domande successive e
-classifica restano da implementare secondo la roadmap MVP al 6 agosto 2026.
+Chiusura dei voti, reveal, scoring, domande successive e classifica restano da
+implementare secondo la roadmap MVP al 6 agosto 2026.
 
 ## MVP
 
@@ -46,7 +48,7 @@ Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `fi
 | Rotta | Utente | Responsabilità |
 | --- | --- | --- |
 | `/` | Partecipante | Inserimento di codice sessione e nickname |
-| `/play/[code]` | Partecipante | Attesa e selezione locale sulla prima domanda; voto persistente ancora non implementato |
+| `/play/[code]` | Partecipante | Attesa, voto persistente modificabile e recovery della scelta personale |
 | `/host` | Host | Accesso, configurazione, creazione e stanze recenti |
 | `/host/[code]` | Host | Gestione lobby, avvio e stato pubblico della prima domanda |
 | `/display/[code]` | Pubblico | Lobby, domanda, conteggio, reveal e classifica |

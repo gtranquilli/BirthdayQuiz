@@ -326,9 +326,19 @@ domande, quattro opzioni e soluzione nelle tabelle `game_*`, imposta
 eseguibile soltanto da `service_role`; per compatibilità riusa uno snapshot già
 completo nelle lobby create prima della migration.
 
-### `submit_vote(p_session_id, p_session_question_id, p_session_option_id)`
+### `submit_vote(p_code, p_game_answer_option_id)`
 
-Identifica il partecipante tramite `auth.uid()`, verifica fase e domanda corrente, controlla che l'opzione appartenga alla copia di sessione, esegue insert/upsert e incrementa `voted_count` soltanto al primo voto. Non legge né restituisce la soluzione.
+Identifica il partecipante tramite `auth.uid()`, blocca la sessione, verifica
+fase e domanda corrente e controlla che l'opzione appartenga alla copia di
+sessione. Inserisce o aggiorna l'unico voto del giocatore per la domanda e
+incrementa `voted_count` soltanto al primo inserimento. Restituisce esclusivamente
+opzione selezionata, conteggio aggregato e indice corrente; non legge né
+restituisce la soluzione.
+
+`get_my_current_vote(p_code)` usa la stessa identità e restituisce soltanto
+`game_answer_option_id` del chiamante sulla domanda corrente, oppure `null`.
+Entrambe le RPC sono eseguibili dal ruolo `authenticated`, incluso un utente
+Supabase Auth anonimo; una chiamata priva di `auth.uid()` viene rifiutata.
 
 ### Transizioni host
 
@@ -345,11 +355,14 @@ Ogni comando verifica la fase nel database. Retry o fase incompatibile non ripet
 Policy minime:
 
 - tabelle soluzione sorgente e di sessione: nessuna lettura pubblica;
-- `votes`: ogni partecipante legge solo la propria risposta; scrittura diretta disabilitata in favore della funzione validata;
+- `votes`: nessuna lettura o scrittura diretta dai client; invio e recovery personale passano esclusivamente dalle RPC validate;
 - `players`: una proiezione sicura rende leggibili nickname, avatar e punteggi dove servono alla lobby/classifica; `user_id` e associazioni con le risposte non sono pubblici;
 - contenuti, preset e sessioni: lettura dei soli campi non sensibili; mutazioni server-side.
 
-`GET /api/game-sessions/[code]/snapshot` restituisce fase, conteggi e contenuto della domanda corrente. Per un partecipante autenticato include la propria scelta. Prima del reveal non include mai soluzione, correttezza, distribuzione o associazioni partecipante-opzione.
+La proiezione Realtime restituisce fase, conteggi e contenuto pubblico della
+domanda corrente. La scelta personale viene recuperata separatamente con
+`get_my_current_vote`; prima del reveal nessun payload include soluzione,
+correttezza, distribuzione o scelte degli altri partecipanti.
 
 `GET /api/game-sessions/[code]/results` verifica server-side `answer_revealed` o `finished` e la domanda rivelata. Restituisce:
 

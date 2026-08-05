@@ -114,6 +114,7 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Ogni partecipante può avere al massimo una risposta per la domanda corrente.
 - Può cambiare scelta finché la fase è `voting_open`; la modifica non incrementa nuovamente il conteggio.
 - La UI conferma il salvataggio soltanto dopo la risposta positiva del database.
+- Un refresh recupera tramite identità anonima soltanto l'opzione scelta dal partecipante corrente.
 - Nessun voto è accettato per un'altra domanda o fuori da `voting_open`.
 - Host e display mostrano `voted_count / participant_count`.
 - Il raggiungimento del totale non chiude automaticamente la votazione.
@@ -123,6 +124,7 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Durante `voting_open` e `voting_closed`, il display mostra domanda, quattro risposte e solo il numero aggregato di giocatori che hanno votato.
 - Prima di `answer_revealed` non mostra avatar associati alle risposte, nickname, scelte individuali, distribuzione, percentuali, conteggi per risposta o correttezza.
 - Un partecipante può leggere soltanto la propria scelta; host e client pubblici non ricevono la relazione giocatore-risposta.
+- La lettura personale passa da una RPC legata a `auth.uid()`; la tabella `votes` non concede lettura diretta ai client.
 - La relazione viene conservata nel database con accesso ristretto per rivelazione e scoring.
 
 ### RF-08 — Chiusura voto

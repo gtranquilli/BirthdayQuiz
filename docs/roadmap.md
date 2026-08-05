@@ -101,9 +101,10 @@ Verifica: host, display e telefoni ricostruiscono lo stato dopo refresh ed event
 - [x] Collegare `start` alla creazione atomica delle copie ordinate di sessione.
 - [ ] Collegare `next` dopo il reveal.
 - [x] Mostrare la prima domanda e le quattro risposte nell'ordine congelato.
-- [ ] Implementare `submit_vote` con modifica consentita solo in `voting_open`.
-- [ ] Incrementare `voted_count` soltanto al primo voto.
-- [ ] Mostrare sul display solo `voted_count / participant_count` come dato sui voti.
+- [x] Implementare `submit_vote` con modifica consentita solo in `voting_open`.
+- [x] Incrementare `voted_count` soltanto al primo voto.
+- [x] Recuperare dopo refresh esclusivamente la scelta del partecipante corrente.
+- [x] Mostrare sul display solo `voted_count / participant_count` come dato sui voti.
 
 Verifica: nessun client pubblico ottiene soluzione, distribuzione o associazione giocatore-risposta.
 

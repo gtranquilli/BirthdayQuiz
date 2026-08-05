@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
 import { isAvatarKey, type AvatarKey } from '@/lib/game/avatars';
@@ -19,6 +19,19 @@ import {
 
 interface PlayerLobbyProps {
   readonly code: string;
+}
+
+type VoteStatus = 'idle' | 'recovering' | 'submitting' | 'saved' | 'error';
+
+interface VoteResultRow {
+  readonly selected_option_id: string;
+  readonly voted_count: number;
+  readonly current_question_index: number;
+}
+
+interface SupabaseErrorLike {
+  readonly code?: string;
+  readonly message?: string;
 }
 
 const CONNECTION_LABELS: Record<LobbyConnectionStatus, string> = {
@@ -44,6 +57,47 @@ function getErrorMessage(value: unknown, fallback: string): string {
   return isRecord(value) && typeof value.error === 'string'
     ? value.error
     : fallback;
+}
+
+function parseVoteResult(value: unknown): VoteResultRow | null {
+  const row = Array.isArray(value) ? (value[0] as unknown) : null;
+
+  if (
+    !isRecord(row) ||
+    typeof row.selected_option_id !== 'string' ||
+    typeof row.voted_count !== 'number' ||
+    typeof row.current_question_index !== 'number'
+  ) {
+    return null;
+  }
+
+  return {
+    selected_option_id: row.selected_option_id,
+    voted_count: row.voted_count,
+    current_question_index: row.current_question_index,
+  };
+}
+
+function getVoteErrorMessage(error: SupabaseErrorLike): string {
+  if (error.code === 'P0001') {
+    return 'La votazione è chiusa. La risposta non è stata modificata.';
+  }
+
+  if (error.code === '22023') {
+    return 'Questa risposta non è valida per la domanda corrente.';
+  }
+
+  if (error.code === 'P0002') {
+    return error.message?.includes('Player not found')
+      ? 'Non risulti tra i partecipanti di questa stanza.'
+      : 'La stanza non è più disponibile.';
+  }
+
+  if (error.code === '42501') {
+    return 'La sessione anonima non è più valida. Entra nuovamente nella stanza.';
+  }
+
+  return 'Errore di rete o servizio non disponibile. Riprova.';
 }
 
 function parsePlayer(value: unknown): StoredPlayerEntry | null {
@@ -81,7 +135,10 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
   const [player, setPlayer] = useState<StoredPlayerEntry | null>(null);
   const [recovering, setRecovering] = useState(true);
   const [playerError, setPlayerError] = useState<string | null>(null);
-  const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [savedOptionId, setSavedOptionId] = useState<string | null>(null);
+  const [voteStatus, setVoteStatus] = useState<VoteStatus>('idle');
+  const [voteError, setVoteError] = useState<string | null>(null);
+  const voteRequestInFlight = useRef(false);
 
   const recoverPlayer = useCallback(async () => {
     const storedPlayer = readStoredPlayer(code);
@@ -135,6 +192,26 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
       return;
     }
 
+    setVoteStatus('recovering');
+    const currentVoteResult = await supabase.rpc('get_my_current_vote', {
+      p_code: code,
+    });
+
+    if (currentVoteResult.error) {
+      setVoteStatus('error');
+      setVoteError(getVoteErrorMessage(currentVoteResult.error));
+    } else if (
+      currentVoteResult.data === null ||
+      typeof currentVoteResult.data === 'string'
+    ) {
+      setSavedOptionId(currentVoteResult.data);
+      setVoteStatus(currentVoteResult.data === null ? 'idle' : 'saved');
+      setVoteError(null);
+    } else {
+      setVoteStatus('error');
+      setVoteError('Impossibile recuperare il voto registrato. Riprova.');
+    }
+
     setPlayer(recoveredPlayer);
     setPlayerError(null);
     setRecovering(false);
@@ -148,6 +225,52 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
 
     return () => window.clearTimeout(recoveryId);
   }, [recoverPlayer]);
+
+  async function submitVote(optionId: string) {
+    if (voteRequestInFlight.current || optionId === savedOptionId) {
+      return;
+    }
+
+    if (!navigator.onLine) {
+      setVoteStatus('error');
+      setVoteError('Sei offline. Riconnettiti e riprova.');
+      return;
+    }
+
+    voteRequestInFlight.current = true;
+    setVoteStatus('submitting');
+    setVoteError(null);
+
+    try {
+      const result = await supabase.rpc('submit_vote', {
+        p_code: code,
+        p_game_answer_option_id: optionId,
+      });
+
+      if (result.error) {
+        setVoteStatus('error');
+        setVoteError(getVoteErrorMessage(result.error));
+        return;
+      }
+
+      const savedVote = parseVoteResult(result.data);
+
+      if (!savedVote) {
+        setVoteStatus('error');
+        setVoteError('Il server ha restituito un voto non valido. Riprova.');
+        return;
+      }
+
+      setSavedOptionId(savedVote.selected_option_id);
+      setVoteStatus('saved');
+      setVoteError(null);
+    } catch {
+      setVoteStatus('error');
+      setVoteError('Errore di rete. Controlla la connessione e riprova.');
+    } finally {
+      voteRequestInFlight.current = false;
+    }
+  }
 
   if (recovering || loading) {
     return (
@@ -216,7 +339,7 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
 
             <div className='mt-6 grid gap-3'>
               {question.options.map((option) => {
-                const selected = selectedOptionId === option.id;
+                const selected = savedOptionId === option.id;
 
                 return (
                   <button
@@ -228,7 +351,8 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                     }`}
                     key={option.id}
                     type='button'
-                    onClick={() => setSelectedOptionId(option.id)}
+                    onClick={() => void submitVote(option.id)}
+                    disabled={voteStatus === 'submitting'}
                   >
                     <span className='mr-3 opacity-70'>{option.position}.</span>
                     {option.text}
@@ -237,10 +361,22 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
               })}
             </div>
 
-            <p className='mt-5 rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-900'>
-              {selectedOptionId
-                ? 'Scelta locale selezionata. Il voto non viene ancora inviato.'
-                : 'Seleziona una risposta. In questa fase il voto non viene ancora salvato.'}
+            <p
+              className={`mt-5 rounded-xl px-4 py-3 text-center text-sm font-medium ${
+                voteStatus === 'error'
+                  ? 'bg-red-50 text-red-800'
+                  : voteStatus === 'saved'
+                    ? 'bg-emerald-50 text-emerald-800'
+                    : 'bg-amber-50 text-amber-900'
+              }`}
+            >
+              {voteStatus === 'submitting'
+                ? 'Invio del voto in corso…'
+                : voteStatus === 'saved'
+                  ? 'Voto registrato. Puoi cambiare risposta finché la votazione resta aperta.'
+                  : voteStatus === 'error'
+                    ? voteError
+                    : 'Seleziona una risposta per registrare il voto.'}
             </p>
           </section>
         </div>
