@@ -474,6 +474,14 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
                 <dd className='break-all font-mono'>{createdSession.id}</dd>
               </div>
             </dl>
+            <a
+              className='mt-5 inline-flex rounded-xl bg-emerald-700 px-4 py-2.5 font-semibold text-white hover:bg-emerald-800'
+              href={`/display/${createdSession.code}`}
+              target='_blank'
+              rel='noreferrer'
+            >
+              Apri il display della lobby
+            </a>
           </section>
         ) : null}
 

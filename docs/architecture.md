@@ -31,6 +31,12 @@ Display -------------> snapshot sicuro + Realtime <---------------+
 - Le operazioni host passano dal server e non espongono `service_role`, soluzioni o voti individuali.
 - Non servono websocket custom, ORM, state manager globale o libreria di componenti per l'MVP.
 
+Per la lobby, `lobby_public_sessions` è una proiezione materializzata e read-only
+che contiene soltanto codice, titolo, fase, capienza, conteggio partecipanti e
+la coppia pubblica nickname/avatar. Trigger database la mantengono sincronizzata
+con `game_sessions` e `players`; è l'unica relazione della lobby pubblicata in
+Realtime e non contiene identificativi Auth, voti o soluzioni.
+
 ## 3. Struttura applicativa prevista
 
 La struttura è indicativa e verrà creata durante l'implementazione:
@@ -335,13 +341,17 @@ Questo è l'unico confine pubblico che rivela la relazione richiesta. Non espone
 
 ## 9. Realtime e recovery
 
-Host, display e partecipanti sottoscrivono la riga `game_sessions` filtrata per ID. La classifica può essere riletta al cambio fase. Non si sottoscrivono pubblicamente `votes` e non si usa Presence come contatore.
+Durante la lobby, display e partecipanti sottoscrivono la riga della proiezione
+sicura `lobby_public_sessions` filtrata per codice. Le tabelle autorevoli
+`game_sessions` e `players` non sono leggibili direttamente dai client
+pubblici. Non si sottoscrivono pubblicamente `votes` e non si usa Presence come
+contatore.
 
 Sequenza consigliata:
 
 1. creare la subscription;
 2. ottenere lo snapshot `no-store`;
-3. ignorare eventi con `updated_at` precedente allo snapshot;
+3. applicare gli eventi successivi della proiezione;
 4. rifare lo snapshot al ritorno online o dopo un errore del canale.
 
 ## 10. Flusso completo

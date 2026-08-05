@@ -6,9 +6,13 @@ Questo repository, nato come BirthdayQuiz, descrive un Quiz Engine riutilizzabil
 
 ## Stato del progetto
 
-Al 4 agosto 2026 il repository contiene soltanto la documentazione di prodotto e architettura. Non sono ancora presenti scaffold Next.js, dipendenze, migrazioni Supabase o codice applicativo.
+Lo scaffold Next.js, lo schema Supabase, il seed, la creazione sessione host e
+il flusso lobby sono presenti. I partecipanti possono scegliere nickname e
+avatar, entrare con Auth anonima e recuperare la propria identità dopo refresh;
+il display usa una proiezione pubblica sicura sincronizzata via Realtime.
 
-La scadenza dell'MVP è il 6 agosto 2026. La roadmap concentra implementazione e collaudo sui soli elementi indispensabili al flusso end-to-end.
+Domande, voto, reveal, scoring e controllo host della partita restano da
+implementare secondo la roadmap MVP al 6 agosto 2026.
 
 ## MVP
 
@@ -70,4 +74,11 @@ Occorre predisporre in formato strutturato il quiz di Giorgio: categorie, domand
 
 ## Avvio locale
 
-Non ancora disponibile: il repository non contiene codice applicativo. I comandi verranno documentati dopo lo scaffold, senza anticipare script o dipendenze inesistenti.
+1. Copiare `.env.example` in `.env.local` e compilare le variabili senza
+   commettere segreti.
+2. Abilitare gli accessi anonimi nel progetto Supabase. La configurazione locale
+   equivalente è già impostata in `supabase/config.toml`.
+3. Applicare le migration e il seed all'ambiente scelto.
+4. Installare le dipendenze con `npm install` e avviare con `npm run dev`.
+
+Controlli disponibili: `npm run lint`, `npm run typecheck` e `npm run build`.
