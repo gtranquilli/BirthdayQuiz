@@ -38,7 +38,8 @@ compatibile con i pari merito e commenti personali deterministici sui telefoni.
 
 Restano fuori scope editor completo, marketplace, gestione utenti, creazione pubblica dei quiz, timer, squadre, chat, media, speed bonus, moderazione avanzata e storico partite.
 Il prossimo blocco architetturale previsto è il supporto immagini per domande e
-risposte; non è incluso nel batch grafico corrente.
+risposte; il motore ora lo implementa tramite Supabase Storage e snapshot
+immutabili, senza URL arbitrari nei contenuti.
 
 ## Flusso della sessione
 
@@ -67,6 +68,8 @@ Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `fi
 - Next.js App Router, TypeScript strict e Tailwind CSS.
 - Supabase Postgres come fonte di verità e Supabase Auth anonimo per i partecipanti.
 - Supabase Realtime per fase e conteggi persistenti; snapshot per recovery.
+- Supabase Storage nel bucket pubblico in lettura `quiz-media`; scritture
+  disponibili soltanto dalle Route Handler host con `service_role`.
 - RLS e funzioni SQL transazionali per capienza, voto, transizioni e scoring.
 - Soluzioni e relazioni giocatore-risposta protette fino a `answer_revealed`.
 - Route Handler server-side protetti da sessione host HttpOnly per le operazioni privilegiate.
@@ -93,7 +96,9 @@ Occorre predisporre in formato strutturato il quiz di Giorgio: categorie, domand
 2. Abilitare gli accessi anonimi nel progetto Supabase. La configurazione locale
    equivalente è già impostata in `supabase/config.toml`.
 3. Applicare le migration e il seed all'ambiente scelto.
-4. Installare le dipendenze con `npm install` e avviare con `npm run dev`.
+4. Per caricare gli asset demo dichiarati dal seed, eseguire
+   `node scripts/upload-demo-media.mjs` con le variabili server disponibili.
+5. Installare le dipendenze con `npm install` e avviare con `npm run dev`.
 
 Controlli disponibili: `npm run lint`, `npm run typecheck` e `npm run build`.
 
@@ -114,3 +119,17 @@ Non serve una variabile con il dominio Vercel: QR e link di invito derivano da
 `window.location.origin`, quindi usano automaticamente il dominio del deploy.
 Nel progetto Supabase deve essere abilitato l’accesso anonimo. Dopo il deploy,
 provare QR e clipboard sull’URL HTTPS definitivo di Vercel.
+
+## Media del quiz
+
+La pagina protetta `/host/content` associa, sostituisce e rimuove immagini da
+domande e risposte esistenti. Accetta JPEG, PNG e WebP fino a 5 MB, richiede
+sempre un testo alternativo e verifica firma reale e dimensioni sul server.
+Per nuovi contenuti è consigliato WebP sotto 1 MB: circa 1600×900 per domande e
+800×600 per risposte. I percorsi seguono
+`quizzes/<quiz-id>/questions/<question-id>/<file>` oppure
+`quizzes/<quiz-id>/answers/<answer-id>/<file>`.
+
+La partita congela percorso, alt text e dimensioni all'avvio. Se un file non è
+più disponibile, le UI mostrano un fallback con il testo alternativo senza
+bloccare voto, reveal o avanzamento.

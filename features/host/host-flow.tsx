@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   type FormEvent,
   useCallback,
@@ -499,13 +500,21 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
             </p>
             <h1 className='mt-1 text-3xl font-bold text-slate-950'>Crea partita</h1>
           </div>
-          <button
-            className='rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'
-            type='button'
-            onClick={() => void handleLogout()}
-          >
-            Esci
-          </button>
+          <div className='flex flex-wrap justify-end gap-2'>
+            <Link
+              className='rounded-lg border border-indigo-300 bg-white px-3 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50'
+              href='/host/content'
+            >
+              Gestisci immagini
+            </Link>
+            <button
+              className='rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'
+              type='button'
+              onClick={() => void handleLogout()}
+            >
+              Esci
+            </button>
+          </div>
         </header>
 
         {error ? (

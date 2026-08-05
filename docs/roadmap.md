@@ -148,9 +148,17 @@ Obiettivo: provare il flusso reale, correggere difetti bloccanti e congelare la 
 
 Verifica: testi reali, quattro risposte e avatar non causano tagli bloccanti.
 
-Blocco architetturale successivo: definire il supporto immagini per domande e
-risposte, inclusi storage, snapshot e proiezione pubblica. Non è incluso nel
-batch UX corrente.
+### 11a. Media strutturati
+
+- [x] Configurare il bucket `quiz-media` pubblico in lettura e server-write.
+- [x] Aggiungere metadati e constraint media a sorgente e snapshot.
+- [x] Congelare i media in `start_game_session` ed esporre solo la domanda corrente.
+- [x] Rendere immagini e fallback responsive su play, display e host.
+- [x] Aggiungere `/host/content` per upload, sostituzione e rimozione protetti.
+- [x] Fornire asset demo generati localmente e procedura di upload.
+
+Verifica: contenuti solo testo, solo immagine e misti attraversano voto e reveal
+senza layout shift bloccanti o scritture Storage dal browser pubblico.
 
 ### 12. Test di dominio e sicurezza
 

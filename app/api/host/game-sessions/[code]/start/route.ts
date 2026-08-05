@@ -17,7 +17,7 @@ interface StartRouteContext {
 
 interface StartGameOptionRow {
   readonly id: string;
-  readonly text: string;
+  readonly text: string | null;
   readonly position: number;
 }
 
@@ -29,7 +29,7 @@ interface StartGameRow {
   readonly question_id: string;
   readonly question_position: number;
   readonly question_category: string;
-  readonly question_prompt: string;
+  readonly question_prompt: string | null;
   readonly question_options: readonly StartGameOptionRow[];
   readonly received_votes: number;
 }
@@ -44,7 +44,7 @@ interface StartGameResponse {
       readonly id: string;
       readonly position: number;
       readonly category: string;
-      readonly prompt: string;
+      readonly prompt: string | null;
       readonly options: readonly StartGameOptionRow[];
     };
     readonly votedCount: number;
@@ -65,7 +65,10 @@ function isStartGameRow(value: unknown): value is StartGameRow {
     typeof value.question_id !== 'string' ||
     typeof value.question_position !== 'number' ||
     typeof value.question_category !== 'string' ||
-    typeof value.question_prompt !== 'string' ||
+    !(
+      value.question_prompt === null ||
+      typeof value.question_prompt === 'string'
+    ) ||
     typeof value.received_votes !== 'number' ||
     !Array.isArray(value.question_options) ||
     value.question_options.length !== 4
@@ -77,7 +80,7 @@ function isStartGameRow(value: unknown): value is StartGameRow {
     (option) =>
       isRecord(option) &&
       typeof option.id === 'string' &&
-      typeof option.text === 'string' &&
+      (option.text === null || typeof option.text === 'string') &&
       isAnswerPosition(option.position),
   );
 }

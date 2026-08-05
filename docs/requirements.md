@@ -34,6 +34,8 @@ Quiz
 - Ogni domanda ha esattamente quattro risposte nell'MVP.
 - Ogni domanda ha esattamente una risposta corretta.
 - Ogni domanda ha un punteggio intero positivo configurabile nei dati caricati.
+- Domande e risposte possono essere testuali, visive o miste; ognuna deve avere
+  almeno testo non vuoto oppure un'immagine valida con alt text obbligatorio.
 - Quiz, categorie, domande, risposte, soluzioni e preset sono caricati tramite seed prima dell'evento.
 - L'MVP non comprende un editor o un flusso pubblico di creazione dei contenuti.
 
@@ -187,6 +189,23 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Se perde la connessione, segnala lo stato e non presenta come salvato un voto non confermato.
 - L'host può chiudere manualmente anche se un partecipante è disconnesso.
 
+### RF-13 — Media strutturati
+
+- Le immagini risiedono nel bucket Supabase Storage `quiz-media`, pubblico in
+  lettura e senza policy di scrittura per `anon` o `authenticated`.
+- Sono ammessi JPEG, PNG e WebP fino a 5 MB. Il database conserva soltanto
+  percorso relativo, alt text, larghezza, altezza e data di aggiornamento.
+- `/host/content` permette all'host autenticato di caricare, sostituire e
+  rimuovere media dai contenuti esistenti; ogni mutazione è same-origin e passa
+  da Route Handler con validazione MIME reale.
+- All'avvio, i metadati vengono copiati in `game_questions` e
+  `game_answer_options`; modifiche successive al sorgente non cambiano lo
+  snapshot della partita.
+- Telefono, host e display usano un renderer condiviso con `object-fit: contain`,
+  spazio riservato, caricamento lazy e fallback accessibile. Solo l'immagine
+  della domanda corrente può avere priorità.
+- Un file mancante o lento non blocca la partita e mostra alt text/fallback.
+
 ## 7. Macchina a stati
 
 | Fase | Display | Partecipante | Azione host valida |
@@ -257,8 +276,8 @@ Non sono consentiti salti di fase, riapertura del voto o ritorno a una domanda p
 - Più host con ruoli diversi.
 - Risposte multiple corrette, testo libero o sondaggi.
 - Timer, speed bonus, streak, penalità o power-up.
-- Squadre, chat, reazioni, audio, video o media nelle domande. Il supporto
-  immagini è il prossimo blocco architetturale, non parte di questo batch.
+- Squadre, chat, reazioni, audio o video nelle domande. Le immagini strutturate
+  sono supportate; lightbox e authoring completo restano fuori scope.
 - Upload e personalizzazione avanzata degli avatar.
 - Moderazione avanzata, late join, cambio nickname e Presence autorevole.
 - Pausa, riapertura voto, rollback o modifica punteggi.

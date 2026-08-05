@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
 import { Leaderboard } from '@/components/leaderboard';
+import { QuizMediaImage } from '@/components/quiz-media-image';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
 import { getFinalResultComment } from '@/lib/game/final-result-comment';
 import { normalizeGameCode, type StoredPlayerEntry } from '@/lib/game/lobby';
@@ -281,6 +282,8 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
 
   if (snapshot.phase === 'voting_open' && snapshot.currentQuestion) {
     const question = snapshot.currentQuestion;
+    const mostlyVisual =
+      question.options.filter((option) => option.media !== null).length >= 3;
 
     return (
       <main className='min-h-screen overflow-x-hidden bg-slate-950 px-4 py-6 text-white'>
@@ -314,11 +317,21 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
             <p className='text-sm font-bold uppercase tracking-wide text-indigo-300'>
               {question.category}
             </p>
-            <h1 className='mt-3 break-words text-2xl font-black leading-tight text-white'>
-              {question.prompt}
-            </h1>
+            {question.prompt ? (
+              <h1 className='mt-3 break-words text-2xl font-black leading-tight text-white'>
+                {question.prompt}
+              </h1>
+            ) : null}
+            {question.media ? (
+              <QuizMediaImage
+                priority
+                className='mt-5 max-h-[42vh]'
+                media={question.media}
+                sizes='(min-width: 640px) 32rem, calc(100vw - 3rem)'
+              />
+            ) : null}
 
-            <div className='mt-6 grid gap-3'>
+            <div className={`mt-6 grid gap-3 ${mostlyVisual ? 'sm:grid-cols-2' : ''}`}>
               {question.options.map((option) => {
                 const selected = savedOptionId === option.id;
 
@@ -337,10 +350,19 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                       voteStatus === 'submitting' || voteStatus === 'recovering'
                     }
                   >
-                    <span className='mr-3 opacity-70'>
-                      {getAnswerPositionLabel(option.position)}.
+                    <span className='block text-sm font-black text-indigo-200'>
+                      {getAnswerPositionLabel(option.position)}
                     </span>
-                    {option.text}
+                    {option.media ? (
+                      <QuizMediaImage
+                        className='mt-2 min-h-32 max-h-64'
+                        media={option.media}
+                        sizes={mostlyVisual ? '(min-width: 640px) 15rem, calc(100vw - 4rem)' : '(min-width: 640px) 30rem, calc(100vw - 4rem)'}
+                      />
+                    ) : null}
+                    {option.text ? (
+                      <span className='mt-2 block break-words'>{option.text}</span>
+                    ) : null}
                   </button>
                 );
               })}
@@ -405,9 +427,19 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
             <p className='text-sm font-bold uppercase tracking-wide text-emerald-300'>
               {question.category}
             </p>
-            <h1 className='mt-3 break-words text-2xl font-black leading-tight text-white'>
-              {question.prompt}
-            </h1>
+            {question.prompt ? (
+              <h1 className='mt-3 break-words text-2xl font-black leading-tight text-white'>
+                {question.prompt}
+              </h1>
+            ) : null}
+            {question.media ? (
+              <QuizMediaImage
+                priority
+                className='mt-5 max-h-[42vh]'
+                media={question.media}
+                sizes='(min-width: 640px) 32rem, calc(100vw - 3rem)'
+              />
+            ) : null}
 
             <ol className='mt-6 grid gap-3'>
               {question.options.map((option) => {
@@ -426,7 +458,8 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                   >
                     <div className='flex items-center justify-between gap-3'>
                       <span>
-                        {getAnswerPositionLabel(option.position)}. {option.text}
+                        {getAnswerPositionLabel(option.position)}
+                        {option.text ? `. ${option.text}` : ''}
                       </span>
                       <span className='text-xs font-black uppercase tracking-wide'>
                         {option.isCorrect
@@ -436,6 +469,13 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
                             : ''}
                       </span>
                     </div>
+                    {option.media ? (
+                      <QuizMediaImage
+                        className='mt-3 max-h-64'
+                        media={option.media}
+                        sizes='(min-width: 640px) 30rem, calc(100vw - 4rem)'
+                      />
+                    ) : null}
                   </li>
                 );
               })}
@@ -460,7 +500,9 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
               <p className='mt-1 text-sm font-medium'>
                 La risposta corretta è{' '}
                 {correctOption
-                  ? `${getAnswerPositionLabel(correctOption.position)}. ${correctOption.text}`
+                  ? correctOption.text
+                    ? `${getAnswerPositionLabel(correctOption.position)}. ${correctOption.text}`
+                    : `l’opzione ${getAnswerPositionLabel(correctOption.position)}`
                   : 'non disponibile'}
                 {selectedOption && !answeredCorrectly
                   ? ` La tua scelta era ${getAnswerPositionLabel(selectedOption.position)}.`

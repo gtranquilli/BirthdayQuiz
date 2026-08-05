@@ -2,6 +2,7 @@ import { GAME_PHASES, type GamePhase } from '@/types';
 
 import { isAnswerPosition } from './answer-position';
 import { isAvatarKey, type AvatarKey } from './avatars';
+import { parseQuizMediaFields, type QuizMedia } from './media';
 
 export const GAME_CODE_PATTERN = /^[A-HJ-NP-Z2-9]{6}$/;
 export const PLAYER_STORAGE_PREFIX = 'birthday-quiz:player:';
@@ -19,8 +20,9 @@ export interface PublicLeaderboardPlayer extends PublicLobbyPlayer {
 
 export interface PublicGameAnswerOption {
   readonly id: string;
-  readonly text: string;
+  readonly text: string | null;
   readonly position: 1 | 2 | 3 | 4;
+  readonly media: QuizMedia | null;
 }
 
 export interface PublicRevealedGameAnswerOption
@@ -34,7 +36,8 @@ export interface PublicGameQuestion {
   readonly id: string;
   readonly position: number;
   readonly category: string;
-  readonly prompt: string;
+  readonly prompt: string | null;
+  readonly media: QuizMedia | null;
   readonly options: readonly PublicGameAnswerOption[];
 }
 
@@ -290,7 +293,11 @@ function parsePublicQuestion(
     !Number.isInteger(value.position) ||
     value.position < 1 ||
     typeof value.category !== 'string' ||
-    typeof value.prompt !== 'string' ||
+    !(
+      value.prompt === null ||
+      value.prompt === undefined ||
+      typeof value.prompt === 'string'
+    ) ||
     !Array.isArray(value.options) ||
     value.options.length !== 4
   ) {
@@ -303,11 +310,22 @@ function parsePublicQuestion(
   const positions = new Set<number>();
 
   for (const option of value.options) {
+    const optionMedia = isRecord(option)
+      ? parseQuizMediaFields(option)
+      : undefined;
+    const normalizedOptionText =
+      isRecord(option) && typeof option.text === 'string'
+        ? option.text.trim()
+        : '';
+    const optionText =
+      normalizedOptionText.length > 0 ? normalizedOptionText : null;
+
     if (
       !isRecord(option) ||
       typeof option.id !== 'string' ||
-      typeof option.text !== 'string' ||
       !isAnswerPosition(option.position) ||
+      optionMedia === undefined ||
+      (optionText === null && optionMedia === null) ||
       optionIds.has(option.id) ||
       positions.has(option.position)
     ) {
@@ -318,8 +336,9 @@ function parsePublicQuestion(
     positions.add(option.position);
     const baseOption: PublicGameAnswerOption = {
       id: option.id,
-      text: option.text,
+      text: optionText,
       position: option.position,
+      media: optionMedia,
     };
 
     if (!revealed) {
@@ -356,11 +375,25 @@ function parsePublicQuestion(
     });
   }
 
+  const questionMedia = parseQuizMediaFields(value);
+  const questionPrompt =
+    typeof value.prompt === 'string' && value.prompt.trim().length > 0
+      ? value.prompt.trim()
+      : null;
+
+  if (
+    questionMedia === undefined ||
+    (questionPrompt === null && questionMedia === null)
+  ) {
+    return null;
+  }
+
   const questionBase = {
     id: value.id,
     position: value.position,
     category: value.category,
-    prompt: value.prompt,
+    prompt: questionPrompt,
+    media: questionMedia,
   };
 
   if (revealed) {

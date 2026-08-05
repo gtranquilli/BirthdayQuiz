@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
 import { Leaderboard } from '@/components/leaderboard';
+import { QuizMediaImage } from '@/components/quiz-media-image';
 import { RoomJoinQrCode } from '@/components/room-join-qr-code';
 import { VoteProgressDots } from '@/components/vote-progress-dots';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
@@ -599,9 +600,19 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
             <p className='mt-2 text-sm font-semibold text-slate-500'>
               {snapshot.currentQuestion.category}
             </p>
-            <h2 className='mt-2 text-2xl font-black text-slate-950'>
-              {snapshot.currentQuestion.prompt}
-            </h2>
+            {snapshot.currentQuestion.prompt ? (
+              <h2 className='mt-2 text-2xl font-black text-slate-950'>
+                {snapshot.currentQuestion.prompt}
+              </h2>
+            ) : null}
+            {snapshot.currentQuestion.media ? (
+              <QuizMediaImage
+                priority
+                className='mt-4 max-h-80 bg-slate-100 ring-slate-200'
+                media={snapshot.currentQuestion.media}
+                sizes='(min-width: 768px) 48rem, calc(100vw - 4rem)'
+              />
+            ) : null}
             <ol className='mt-5 grid gap-4 sm:grid-cols-2'>
               {snapshot.currentQuestion.options.map((option) => (
                 <li
@@ -614,12 +625,20 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
                 >
                   <div className='flex items-start justify-between gap-3'>
                     <p className='font-bold text-slate-950'>
-                      {getAnswerPositionLabel(option.position)}. {option.text}
+                      {getAnswerPositionLabel(option.position)}
+                      {option.text ? `. ${option.text}` : ''}
                     </p>
                     <span className='shrink-0 text-sm font-bold text-slate-600'>
                       {option.voteCount} voti
                     </span>
                   </div>
+                  {option.media ? (
+                    <QuizMediaImage
+                      className='mt-3 max-h-52 bg-white ring-slate-200'
+                      media={option.media}
+                      sizes='(min-width: 640px) 20rem, calc(100vw - 6rem)'
+                    />
+                  ) : null}
                   {option.isCorrect ? (
                     <p className='mt-2 text-xs font-black uppercase tracking-wide text-emerald-700'>
                       Risposta corretta
@@ -680,16 +699,36 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
             <p className='mt-2 text-sm font-semibold text-slate-500'>
               {currentQuestion.category}
             </p>
-            <h2 className='mt-2 text-2xl font-black text-slate-950'>
-              {currentQuestion.prompt}
-            </h2>
+            {currentQuestion.prompt ? (
+              <h2 className='mt-2 text-2xl font-black text-slate-950'>
+                {currentQuestion.prompt}
+              </h2>
+            ) : null}
+            {currentQuestion.media ? (
+              <QuizMediaImage
+                priority
+                className='mt-4 max-h-80 bg-slate-100 ring-slate-200'
+                media={currentQuestion.media}
+                sizes='(min-width: 768px) 48rem, calc(100vw - 4rem)'
+              />
+            ) : null}
             <ol className='mt-5 grid gap-3 sm:grid-cols-2'>
               {currentQuestion.options.map((option) => (
                 <li
                   className='rounded-xl bg-slate-50 px-4 py-3 font-semibold text-slate-800 ring-1 ring-slate-200'
                   key={option.id}
                 >
-                  {getAnswerPositionLabel(option.position)}. {option.text}
+                  <span>
+                    {getAnswerPositionLabel(option.position)}
+                    {option.text ? `. ${option.text}` : ''}
+                  </span>
+                  {option.media ? (
+                    <QuizMediaImage
+                      className='mt-3 max-h-48 bg-white ring-slate-200'
+                      media={option.media}
+                      sizes='(min-width: 640px) 20rem, calc(100vw - 6rem)'
+                    />
+                  ) : null}
                 </li>
               ))}
             </ol>

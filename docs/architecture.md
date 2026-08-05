@@ -421,9 +421,44 @@ avatar-opzione. Non espone token, identificativi Auth, `player_id`, record
 
 Il tema partecipante è dark di default e condivide la palette slate/indigo del
 display. Selezione, correttezza, errore, stato disabilitato e connessione hanno
-anche testo, etichette ARIA o differenze di bordo, non soltanto colore. Il
-supporto immagini per domande e risposte rimane il prossimo blocco
-architetturale e richiederà una decisione separata su storage e proiezione.
+anche testo, etichette ARIA o differenze di bordo, non soltanto colore.
+
+### Storage e snapshot media
+
+Il bucket `quiz-media` è pubblico soltanto in lettura. Non esistono policy
+`insert`, `update` o `delete` per `anon`/`authenticated`; la gestione media usa
+Route Handler host same-origin e il client amministrativo server-only.
+Formati ammessi: JPEG, PNG e WebP, massimo 5 MB.
+
+`questions`, `answer_options`, `game_questions` e `game_answer_options`
+conservano `image_storage_path`, `image_alt_text`, `image_width`,
+`image_height` e `image_updated_at`. I constraint richiedono testo o immagine,
+alt text e dimensioni positive e rifiutano URL completi, traversal ed estensioni
+non ammesse. Lo Storage path è relativo e stabile:
+
+```text
+quizzes/<quiz-id>/questions/<question-id>/<filename>
+quizzes/<quiz-id>/answers/<answer-id>/<filename>
+```
+
+`start_game_session` copia i metadati sorgente nello snapshot. Un trigger
+`BEFORE` arricchisce la proiezione pubblica esistente soltanto con i media della
+domanda corrente, preservando privacy, reveal e assenza delle domande future.
+Il browser costruisce l'URL pubblico dal path validato, dal bucket fisso e da
+`NEXT_PUBLIC_SUPABASE_URL`; signed URL e domini completi non vengono persistiti.
+Durante sostituzione o rimozione, un vecchio oggetto Storage viene cancellato
+solo se non è referenziato da `game_questions` o `game_answer_options`; i file
+ancora necessari a snapshot avviati vengono conservati.
+
+`QuizMediaImage` usa Next Image, proporzioni note, `object-fit: contain`, lazy
+loading per le risposte, priorità solo alla domanda corrente e fallback con alt
+text. Sul telefono le risposte restano in colonna a 320 px e diventano 2×2 solo
+su larghezze sufficienti quando prevalentemente visive; display e host
+riutilizzano lo stesso renderer con dimensioni diverse.
+
+Per contenuti nuovi sono raccomandati WebP sotto 1 MB, circa 1600×900 per le
+domande e 800×600 per le risposte. Lo script `scripts/upload-demo-media.mjs`
+genera gli asset demo originali e li carica dopo il seed.
 
 ## 9. Realtime e recovery
 

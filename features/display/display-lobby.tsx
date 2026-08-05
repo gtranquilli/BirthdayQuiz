@@ -3,6 +3,7 @@
 import { AvatarBadge } from '@/components/avatar-badge';
 import { FinalPodium } from '@/components/final-podium';
 import { Leaderboard } from '@/components/leaderboard';
+import { QuizMediaImage } from '@/components/quiz-media-image';
 import { RoomJoinQrCode } from '@/components/room-join-qr-code';
 import { VoteProgressDots } from '@/components/vote-progress-dots';
 import { normalizeGameCode } from '@/lib/game/lobby';
@@ -100,9 +101,19 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
             </span>
           </header>
 
-          <h1 className='mx-auto mt-5 max-w-5xl text-center text-3xl font-black leading-tight lg:text-5xl'>
-            {question.prompt}
-          </h1>
+          {question.prompt ? (
+            <h1 className='mx-auto mt-5 max-w-5xl text-center text-3xl font-black leading-tight lg:text-5xl'>
+              {question.prompt}
+            </h1>
+          ) : null}
+          {question.media ? (
+            <QuizMediaImage
+              priority
+              className='mx-auto mt-5 max-h-[38vh] max-w-4xl'
+              media={question.media}
+              sizes='(min-width: 1024px) 70vw, 90vw'
+            />
+          ) : null}
 
           <ol className='mt-7 grid flex-1 gap-4 md:grid-cols-2'>
             {question.options.map((option) => (
@@ -124,7 +135,9 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
                   </span>
                   <div className='min-w-0 flex-1'>
                     <div className='flex items-start justify-between gap-4'>
-                      <p className='text-xl font-black lg:text-2xl'>{option.text}</p>
+                      {option.text ? (
+                        <p className='text-xl font-black lg:text-2xl'>{option.text}</p>
+                      ) : null}
                       <span className='shrink-0 text-sm font-bold text-slate-300'>
                         {option.voteCount} voti
                       </span>
@@ -136,6 +149,14 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
                     ) : null}
                   </div>
                 </div>
+
+                {option.media ? (
+                  <QuizMediaImage
+                    className='mt-4 max-h-56'
+                    media={option.media}
+                    sizes='(min-width: 768px) 42vw, 90vw'
+                  />
+                ) : null}
 
                 <ul className='mt-5 flex flex-wrap gap-3'>
                   {option.players.map((optionPlayer) => (
@@ -213,9 +234,19 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
           </header>
 
           <section className='my-auto py-8'>
-            <h1 className='mx-auto max-w-5xl text-center text-4xl font-black leading-tight lg:text-6xl'>
-              {question.prompt}
-            </h1>
+            {question.prompt ? (
+              <h1 className='mx-auto max-w-5xl text-center text-4xl font-black leading-tight lg:text-6xl'>
+                {question.prompt}
+              </h1>
+            ) : null}
+            {question.media ? (
+              <QuizMediaImage
+                priority
+                className='mx-auto mt-6 max-h-[42vh] max-w-5xl'
+                media={question.media}
+                sizes='(min-width: 1024px) 75vw, 92vw'
+              />
+            ) : null}
             <ol className='mx-auto mt-10 grid max-w-6xl gap-5 md:grid-cols-2'>
               {question.options.map((option) => (
                 <li
@@ -225,7 +256,16 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
                   <span className='mr-5 grid size-11 shrink-0 place-items-center rounded-full bg-indigo-500 text-lg'>
                     {getAnswerPositionLabel(option.position)}
                   </span>
-                  {option.text}
+                  <div className='min-w-0 flex-1'>
+                    {option.text ? <p>{option.text}</p> : null}
+                    {option.media ? (
+                      <QuizMediaImage
+                        className='mt-3 max-h-52'
+                        media={option.media}
+                        sizes='(min-width: 768px) 42vw, 90vw'
+                      />
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ol>
