@@ -7,15 +7,18 @@ import { AvatarBadge } from '@/components/avatar-badge';
 import { AVATARS, isAvatarKey, type AvatarKey } from '@/lib/game/avatars';
 import {
   GAME_CODE_PATTERN,
-  getPlayerStorageKey,
   normalizeGameCode,
+  saveStoredPlayer,
 } from '@/lib/game/lobby';
+import { getOrCreateAnonymousSession } from '@/lib/game/participant-recovery';
+import { isRejoinToken, saveRejoinToken } from '@/lib/game/rejoin-token';
 import { createClient } from '@/lib/supabase/client';
 
 interface JoinedPlayerResponse {
   readonly code: string;
   readonly nickname: string;
   readonly avatarKey: AvatarKey;
+  readonly rejoinToken: string;
 }
 
 interface JoinGameFormProps {
@@ -47,7 +50,8 @@ function parseJoinedPlayer(value: unknown): JoinedPlayerResponse | null {
     !isRecord(value.session) ||
     typeof value.session.code !== 'string' ||
     typeof value.player.nickname !== 'string' ||
-    !isAvatarKey(value.player.avatarKey)
+    !isAvatarKey(value.player.avatarKey) ||
+    !isRejoinToken(value.rejoinToken)
   ) {
     return null;
   }
@@ -56,6 +60,7 @@ function parseJoinedPlayer(value: unknown): JoinedPlayerResponse | null {
     code: value.session.code,
     nickname: value.player.nickname,
     avatarKey: value.player.avatarKey,
+    rejoinToken: value.rejoinToken,
   };
 }
 
@@ -87,29 +92,7 @@ export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
     setSubmitting(true);
 
     try {
-      const sessionResult = await supabase.auth.getSession();
-
-      if (sessionResult.error) {
-        throw new Error('Impossibile recuperare la sessione partecipante.');
-      }
-
-      let session = sessionResult.data.session;
-
-      if (session && session.user.is_anonymous !== true) {
-        throw new Error('È richiesta una sessione partecipante anonima.');
-      }
-
-      if (!session) {
-        const signInResult = await supabase.auth.signInAnonymously();
-
-        if (signInResult.error || !signInResult.data.session) {
-          throw new Error(
-            'Impossibile creare la sessione anonima. Riprova tra poco.',
-          );
-        }
-
-        session = signInResult.data.session;
-      }
+      const session = await getOrCreateAnonymousSession(supabase);
 
       const response = await fetch('/api/game-sessions/join', {
         method: 'POST',
@@ -121,6 +104,7 @@ export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
           code,
           nickname: normalizedNickname,
           avatarKey,
+          rotateRejoinToken: true,
         }),
       });
       const payload = await readJson(response);
@@ -137,13 +121,21 @@ export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
         throw new Error('La risposta di ingresso non è valida.');
       }
 
-      window.localStorage.setItem(
-        getPlayerStorageKey(joinedPlayer.code),
-        JSON.stringify({
-          nickname: joinedPlayer.nickname,
-          avatarKey: joinedPlayer.avatarKey,
-        }),
+      const playerSaved = saveStoredPlayer(joinedPlayer.code, {
+        nickname: joinedPlayer.nickname,
+        avatarKey: joinedPlayer.avatarKey,
+      });
+      const tokenSaved = saveRejoinToken(
+        joinedPlayer.code,
+        joinedPlayer.rejoinToken,
       );
+
+      if (!playerSaved || !tokenSaved) {
+        throw new Error(
+          'Ingresso riuscito, ma il browser non consente di salvare il recupero locale.',
+        );
+      }
+
       router.push(`/play/${joinedPlayer.code}`);
     } catch (joinError) {
       setError(

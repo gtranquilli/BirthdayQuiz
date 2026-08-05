@@ -8,7 +8,8 @@ Questo repository, nato come BirthdayQuiz, descrive un Quiz Engine riutilizzabil
 
 Lo scaffold Next.js, lo schema Supabase, il seed, la creazione sessione host e
 il primo game loop sono presenti. I partecipanti possono entrare con Auth
-anonima, recuperare la propria identità e vedere la prima domanda; host e
+anonima, recuperare la propria identità anche dopo la perdita della sessione
+Auth tramite un rejoin token personale e vedere la prima domanda; host e
 display ricevono lo stesso stato pubblico tramite Realtime. Durante
 `voting_open` il voto viene salvato atomicamente e la scelta personale viene
 recuperata dopo refresh. L’host può chiudere la votazione e, con un’azione
@@ -28,7 +29,8 @@ e la sessione apre la domanda successiva oppure termina con la classifica finale
 - Accesso partecipanti senza email tramite Supabase Auth anonimo.
 - Voto anonimo fino al reveal: durante apertura e chiusura sul display sono visibili solo domanda, quattro risposte e conteggio dei votanti.
 - Reveal separato in stile Among Us: risposta corretta e avatar accanto alle risposte scelte, poi punti e classifica.
-- Recovery dello stato dopo refresh o breve disconnessione.
+- Recovery dopo refresh, breve disconnessione o perdita della sessione Auth,
+  senza creare un secondo player né modificare voti e punteggio.
 
 Restano fuori scope editor completo, marketplace, gestione utenti, creazione pubblica dei quiz, timer, squadre, chat, media, speed bonus, moderazione avanzata e storico partite.
 
@@ -36,7 +38,7 @@ Restano fuori scope editor completo, marketplace, gestione utenti, creazione pub
 
 1. L'host sceglie quiz e preset e adatta i conteggi per categoria.
 2. Inserisce il massimo giocatori e conferma la creazione.
-3. Il display mostra un QR verso `/join/[code]`; dopo la scansione il partecipante sceglie soltanto nickname e avatar. La home conserva l’inserimento manuale del codice come fallback.
+3. Il display mostra un QR verso `/join/[code]`; dopo la scansione il partecipante sceglie soltanto nickname e avatar. La home conserva l’inserimento manuale del codice come fallback. Al join il browser conserva in `localStorage` un rejoin token personale per quella stanza.
 4. L'host avvia: il sistema estrae e congela domande, quattro risposte, soluzioni, punteggi e ordine, poi apre la prima domanda.
 5. L'host chiude il voto e poi attiva separatamente il reveal con soluzione e avatar.
 6. Dopo ogni reveal può aprire la domanda successiva o terminare con la classifica finale.
@@ -62,6 +64,9 @@ Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `fi
 - RLS e funzioni SQL transazionali per capienza, voto, transizioni e scoring.
 - Soluzioni e relazioni giocatore-risposta protette fino a `answer_revealed`.
 - Route Handler server-side protetti da sessione host HttpOnly per le operazioni privilegiate.
+- Rejoin token casuali da 256 bit: il browser conserva il token in chiaro solo
+  localmente, mentre Postgres conserva esclusivamente l'hash SHA-256 e lo ruota
+  dopo ogni recupero riuscito.
 - Vercel per il deploy.
 
 ## Documentazione

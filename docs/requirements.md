@@ -90,6 +90,16 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Il partecipante riceve un `avatar_key` da un set predefinito; non sono previsti upload o editor avatar.
 - Nickname e avatar sono entrambi univoci all'interno della sessione.
 - Un refresh sullo stesso browser ripristina partecipazione e avatar.
+- Al primo ingresso il partecipante riceve un rejoin token casuale personale,
+  salvato localmente per codice stanza; nel database è conservato soltanto il
+  relativo hash.
+- Se la sessione Auth anonima viene persa, il browser crea una nuova identità e
+  usa il token per riassociare lo stesso player. Il recupero non cambia
+  nickname, avatar, voti, punteggio o `participant_count` ed è consentito in
+  tutte le fasi, inclusa `finished`.
+- Ogni rejoin riuscito ruota atomicamente il token e invalida il precedente. Un
+  token assente, non valido o relativo a un player rimosso riporta al normale
+  ingresso; un nuovo player può essere creato soltanto durante la lobby.
 - Raggiunto il massimo configurato dall'host, nuovi ingressi vengono rifiutati con un messaggio comprensibile.
 
 ### RF-04 — Lobby

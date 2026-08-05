@@ -80,7 +80,10 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 
 - crea o ripristina la sessione anonima;
 - apre `/join/[code]` dal QR e sceglie soltanto nickname e avatar;
-- invoca `join_game_session` e `submit_vote`;
+- conserva il rejoin token personale in `localStorage` con chiave
+  `quiz-engine:rejoin:<CODE>` e lo usa solo quando l'identità Auth corrente non
+  trova più il player;
+- invoca i Route Handler same-origin di join/rejoin e la RPC `submit_vote`;
 - carica lo snapshot e ascolta la sessione via Realtime;
 - mostra solo la propria scelta prima del reveal;
 - non calcola punteggi o correttezza autorevoli.
@@ -106,6 +109,9 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 - gestiscono sessione host, elenco/dettaglio stanze, creazione, gestione lobby, transizioni e risultati protetti;
 - usano `SUPABASE_SERVICE_ROLE_KEY` soltanto server-side;
 - validano payload, autorizzazione e fase;
+- verificano il bearer token Supabase anonimo prima di join e rejoin, generano
+  token casuali con API crittografiche server-side e passano al database solo
+  hash SHA-256;
 - restituiscono errori di dominio stabili senza dettagli interni.
 
 ### Supabase
@@ -280,6 +286,8 @@ La transazione di avvio verifica inoltre che ogni `session_question` abbia esatt
 | `nickname` | `text` | Valore mostrato |
 | `nickname_normalized` | `text` | Unicità case-insensitive |
 | `avatar_key` | `text` | Identità visuale stabile generata all'ingresso |
+| `rejoin_token_hash` | `text` nullable | SHA-256 esadecimale del token personale |
+| `rejoin_token_created_at` | `timestamptz` nullable | Creazione o ultima rotazione del token |
 | `total_score` | `integer` | Default 0 |
 | `joined_at` | `timestamptz` | Tie-break stabile |
 
@@ -312,9 +320,25 @@ Il Route Handler host, dopo la conferma della capienza, invoca un'operazione dat
 4. salva `session_category_config` senza creare ancora lo snapshot delle domande;
 5. fallisce interamente se un'invariante non è rispettata.
 
-### `join_game_session(p_code, p_nickname, p_avatar_key)`
+### Join e rejoin partecipante
 
-Normalizza gli input, blocca la sessione, verifica `lobby`, capienza e unicità di nickname e avatar, crea o recupera il partecipante di `auth.uid()` e incrementa il conteggio solo al primo inserimento.
+Il Route Handler di join verifica la sessione Supabase Auth anonima, genera 32
+byte casuali e invoca `join_game_session_with_rejoin_token` tramite
+`service_role`. La funzione blocca la sessione, verifica `lobby`, capienza e
+unicità di nickname e avatar, crea il player e incrementa il conteggio solo al
+primo inserimento. Al client torna il token Base64URL in chiaro; Postgres riceve
+e conserva soltanto il suo hash SHA-256.
+
+Il recupero prova prima il lookup del player con l'identità Auth ancora valida,
+evitando rejoin inutili sui refresh normali. Solo se il player non viene trovato
+usa il token locale: il Route Handler same-origin verifica la nuova identità
+anonima e chiama `rejoin_game_session` con hash corrente e successivo. La RPC
+blocca la riga sessione e il player, aggiorna soltanto `auth_user_id` e hash del
+token e restituisce nickname/avatar invariati. Il lock e la rotazione nella
+stessa transazione fanno riuscire una sola richiesta concorrente sul vecchio
+token. Il player, i voti, il punteggio e `participant_count` non cambiano; il
+rejoin è ammesso da `lobby` fino a `finished`. Le due RPC sono eseguibili solo da
+`service_role` e i token non entrano nella proiezione pubblica o nei log.
 
 ### Gestione host della lobby
 
@@ -365,6 +389,7 @@ Policy minime:
 - tabelle soluzione sorgente e di sessione: nessuna lettura pubblica;
 - `votes`: nessuna lettura o scrittura diretta dai client; invio e recovery personale passano esclusivamente dalle RPC validate;
 - `players`: una proiezione sicura rende leggibili nickname, avatar e punteggi dove servono alla lobby/classifica; `user_id` e associazioni con le risposte non sono pubblici;
+- `players.rejoin_token_hash`: nessuna lettura client o proiezione pubblica;
 - contenuti, preset e sessioni: lettura dei soli campi non sensibili; mutazioni server-side.
 
 La proiezione Realtime restituisce fase, conteggi e contenuto pubblico della

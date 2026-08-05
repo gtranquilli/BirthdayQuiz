@@ -117,6 +117,40 @@ export function getPlayerStorageKey(code: string): string {
   return `${PLAYER_STORAGE_PREFIX}${normalizeGameCode(code)}`;
 }
 
+export function readStoredPlayer(code: string): StoredPlayerEntry | null {
+  try {
+    const storedValue = window.localStorage.getItem(getPlayerStorageKey(code));
+    return storedValue
+      ? parseStoredPlayerEntry(JSON.parse(storedValue) as unknown)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveStoredPlayer(
+  code: string,
+  player: StoredPlayerEntry,
+): boolean {
+  try {
+    window.localStorage.setItem(
+      getPlayerStorageKey(code),
+      JSON.stringify(player),
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function removeStoredPlayer(code: string): void {
+  try {
+    window.localStorage.removeItem(getPlayerStorageKey(code));
+  } catch {
+    // Storage may be unavailable; the database remains authoritative.
+  }
+}
+
 export function parseStoredPlayerEntry(value: unknown): StoredPlayerEntry | null {
   if (
     !isRecord(value) ||

@@ -1,18 +1,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
 import { Leaderboard } from '@/components/leaderboard';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
-import { isAvatarKey, type AvatarKey } from '@/lib/game/avatars';
-import {
-  getPlayerStorageKey,
-  normalizeGameCode,
-  parseStoredPlayerEntry,
-  type StoredPlayerEntry,
-} from '@/lib/game/lobby';
+import { normalizeGameCode, type StoredPlayerEntry } from '@/lib/game/lobby';
+import { recoverParticipant } from '@/lib/game/participant-recovery';
 import { createClient } from '@/lib/supabase/client';
 import {
   type LobbyConnectionStatus,
@@ -45,20 +41,6 @@ const CONNECTION_LABELS: Record<LobbyConnectionStatus, string> = {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
-}
-
-async function readJson(response: Response): Promise<unknown> {
-  try {
-    return (await response.json()) as unknown;
-  } catch {
-    return null;
-  }
-}
-
-function getErrorMessage(value: unknown, fallback: string): string {
-  return isRecord(value) && typeof value.error === 'string'
-    ? value.error
-    : fallback;
 }
 
 function parseVoteResult(value: unknown): VoteResultRow | null {
@@ -102,35 +84,9 @@ function getVoteErrorMessage(error: SupabaseErrorLike): string {
   return 'Errore di rete o servizio non disponibile. Riprova.';
 }
 
-function parsePlayer(value: unknown): StoredPlayerEntry | null {
-  if (
-    !isRecord(value) ||
-    !isRecord(value.player) ||
-    typeof value.player.nickname !== 'string' ||
-    !isAvatarKey(value.player.avatarKey)
-  ) {
-    return null;
-  }
-
-  return {
-    nickname: value.player.nickname,
-    avatarKey: value.player.avatarKey as AvatarKey,
-  };
-}
-
-function readStoredPlayer(code: string): StoredPlayerEntry | null {
-  try {
-    const storedValue = window.localStorage.getItem(getPlayerStorageKey(code));
-    return storedValue
-      ? parseStoredPlayerEntry(JSON.parse(storedValue) as unknown)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
 export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
   const code = normalizeGameCode(rawCode);
+  const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
   const { snapshot, loading, error, connectionStatus, refresh } =
     useLobbySession(code);
@@ -144,62 +100,25 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
   const recoveredVoteQuestionId = useRef<string | null>(null);
 
   const recoverPlayer = useCallback(async () => {
-    const storedPlayer = readStoredPlayer(code);
+    try {
+      const result = await recoverParticipant(supabase, code);
 
-    if (!storedPlayer) {
+      if (result.status === 'unavailable') {
+        router.replace(`/join/${code}?recovery=failed`);
+        return;
+      }
+
+      setPlayer(result.player);
+      setPlayerError(null);
+      setRecovering(false);
+      void refresh();
+    } catch {
       setPlayerError(
-        'Non troviamo la tua partecipazione su questo dispositivo. Entra di nuovo dalla home.',
+        'Impossibile recuperare la partecipazione. Controlla la connessione e riprova.',
       );
       setRecovering(false);
-      return;
     }
-
-    const sessionResult = await supabase.auth.getSession();
-    const session = sessionResult.data.session;
-
-    if (sessionResult.error || !session || session.user.is_anonymous !== true) {
-      setPlayerError(
-        'La sessione anonima non è più disponibile. Entra di nuovo dalla home.',
-      );
-      setRecovering(false);
-      return;
-    }
-
-    const response = await fetch('/api/game-sessions/join', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        code,
-        nickname: storedPlayer.nickname,
-        avatarKey: storedPlayer.avatarKey,
-      }),
-    });
-    const payload = await readJson(response);
-
-    if (!response.ok) {
-      setPlayerError(
-        getErrorMessage(payload, 'Impossibile recuperare la partecipazione.'),
-      );
-      setRecovering(false);
-      return;
-    }
-
-    const recoveredPlayer = parsePlayer(payload);
-
-    if (!recoveredPlayer) {
-      setPlayerError('La partecipazione recuperata non è valida.');
-      setRecovering(false);
-      return;
-    }
-
-    setPlayer(recoveredPlayer);
-    setPlayerError(null);
-    setRecovering(false);
-    void refresh();
-  }, [code, refresh, supabase]);
+  }, [code, refresh, router, supabase]);
 
   useEffect(() => {
     const recoveryId = window.setTimeout(() => {
@@ -328,7 +247,7 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
     return (
       <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
         <p className='text-sm font-medium text-slate-600'>
-          Recupero della lobby…
+          Recupero della tua partecipazione…
         </p>
       </main>
     );
@@ -344,7 +263,7 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
           </p>
           <Link
             className='mt-6 inline-flex rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-700'
-            href='/'
+            href={`/join/${code}`}
           >
             Torna all’ingresso
           </Link>

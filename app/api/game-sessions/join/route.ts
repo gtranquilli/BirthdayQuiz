@@ -1,9 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { isAvatarKey } from '@/lib/game/avatars';
 import { GAME_CODE_PATTERN, normalizeGameCode } from '@/lib/game/lobby';
 import { hasValidRequestOrigin } from '@/lib/http/origin';
+import {
+  generateRejoinToken,
+  hashRejoinToken,
+} from '@/lib/server/rejoin-token';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyAnonymousParticipantRequest } from '@/lib/supabase/participant-auth';
 
 export const runtime = 'nodejs';
 
@@ -11,6 +16,7 @@ interface JoinGameInput {
   readonly code: string;
   readonly nickname: string;
   readonly avatarKey: string;
+  readonly rotateRejoinToken: boolean;
 }
 
 interface JoinedGameRow {
@@ -21,6 +27,7 @@ interface JoinedGameRow {
   readonly quiz_title: string;
   readonly max_players: number;
   readonly participant_count: number;
+  readonly rejoin_token_changed: boolean;
 }
 
 interface SupabaseRpcError {
@@ -32,33 +39,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function getRequiredEnvironmentVariable(name: string): string {
-  const value = process.env[name]?.trim();
-
-  if (!value) {
-    throw new Error(`Missing required server environment variable: ${name}`);
-  }
-
-  return value;
-}
-
-function getBearerToken(request: NextRequest): string | null {
-  const authorization = request.headers.get('authorization');
-
-  if (!authorization?.startsWith('Bearer ')) {
-    return null;
-  }
-
-  const token = authorization.slice('Bearer '.length).trim();
-  return token.length > 0 ? token : null;
-}
-
 function parseInput(value: unknown): JoinGameInput | null {
   if (
     !isRecord(value) ||
     typeof value.code !== 'string' ||
     typeof value.nickname !== 'string' ||
-    !isAvatarKey(value.avatarKey)
+    !isAvatarKey(value.avatarKey) ||
+    !(
+      value.rotateRejoinToken === undefined ||
+      typeof value.rotateRejoinToken === 'boolean'
+    )
   ) {
     return null;
   }
@@ -70,7 +60,12 @@ function parseInput(value: unknown): JoinGameInput | null {
     return null;
   }
 
-  return { code, nickname, avatarKey: value.avatarKey };
+  return {
+    code,
+    nickname,
+    avatarKey: value.avatarKey,
+    rotateRejoinToken: value.rotateRejoinToken ?? true,
+  };
 }
 
 function isJoinedGameRow(value: unknown): value is JoinedGameRow {
@@ -82,7 +77,8 @@ function isJoinedGameRow(value: unknown): value is JoinedGameRow {
     typeof value.session_phase === 'string' &&
     typeof value.quiz_title === 'string' &&
     typeof value.max_players === 'number' &&
-    typeof value.participant_count === 'number'
+    typeof value.participant_count === 'number' &&
+    typeof value.rejoin_token_changed === 'boolean'
   );
 }
 
@@ -159,9 +155,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const accessToken = getBearerToken(request);
+  const participant = await verifyAnonymousParticipantRequest(request);
 
-  if (!accessToken) {
+  if (!participant) {
     return NextResponse.json(
       { error: 'Sessione partecipante non disponibile.' },
       { status: 401 },
@@ -189,25 +185,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const supabase = createClient(
-      getRequiredEnvironmentVariable('NEXT_PUBLIC_SUPABASE_URL'),
-      getRequiredEnvironmentVariable('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY'),
+    const rejoinToken = generateRejoinToken();
+    const admin = createAdminClient();
+    const { data, error } = await admin.rpc(
+      'join_game_session_with_rejoin_token',
       {
-        auth: {
-          autoRefreshToken: false,
-          detectSessionInUrl: false,
-          persistSession: false,
-        },
-        global: {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
+        p_code: input.code,
+        p_nickname: input.nickname,
+        p_avatar_key: input.avatarKey,
+        p_auth_user_id: participant.userId,
+        p_rejoin_token_hash: hashRejoinToken(rejoinToken),
+        p_rotate_rejoin_token: input.rotateRejoinToken,
       },
     );
-    const { data, error } = await supabase.rpc('join_game_session', {
-      p_code: input.code,
-      p_nickname: input.nickname,
-      p_avatar_key: input.avatarKey,
-    });
 
     if (error) {
       return rpcErrorResponse(error);
@@ -234,6 +224,7 @@ export async function POST(request: NextRequest) {
         participantCount: row.participant_count,
         maxPlayers: row.max_players,
       },
+      rejoinToken: row.rejoin_token_changed ? rejoinToken : null,
     });
   } catch {
     return NextResponse.json(

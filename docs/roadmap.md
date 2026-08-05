@@ -78,11 +78,13 @@ Obiettivo: giocare tutte le domande con le tre superfici, anche con UI essenzial
 ### 6. Accesso e lobby
 
 - [ ] Proteggere le operazioni host con password ambiente e cookie firmato.
-- [ ] Creare o ripristinare Auth anonimo nel browser partecipante.
+- [x] Creare o ripristinare Auth anonimo nel browser partecipante.
 - [x] Aprire `/join/[code]` tramite QR e mantenere la home come fallback per il codice.
-- [ ] Implementare `join_game_session` con nickname, fase e capienza atomica.
-- [ ] Assegnare e conservare un avatar visuale stabile.
-- [ ] Impedire avatar duplicati nella stessa stanza.
+- [x] Implementare il join con nickname, fase e capienza atomica.
+- [x] Assegnare e conservare un avatar visuale stabile.
+- [x] Impedire avatar duplicati nella stessa stanza.
+- [x] Recuperare lo stesso player dopo la perdita di Auth tramite rejoin token
+  personale hashato e ruotato atomicamente.
 - [ ] Consentire all'host di riaprire stanze recenti, rimuovere giocatori e annullare una lobby.
 - [x] Completare `/`, `/join/[code]`, `/play/[code]`, `/host/[code]` e `/display/[code]` per la lobby.
 
