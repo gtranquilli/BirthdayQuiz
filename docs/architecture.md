@@ -50,6 +50,8 @@ app/
   display/[code]/page.tsx
   api/host/session/route.ts
   api/host/game-sessions/route.ts
+  api/host/game-sessions/[code]/route.ts
+  api/host/game-sessions/[code]/players/[playerId]/route.ts
   api/host/game-sessions/[id]/transition/route.ts
   api/game-sessions/[code]/snapshot/route.ts
   api/game-sessions/[code]/results/route.ts
@@ -80,6 +82,7 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 - legge quiz e preset disponibili;
 - modifica la configurazione per categoria e inserisce la capienza senza valore predefinito;
 - chiede conferma prima di creare la sessione;
+- riapre le sessioni recenti e, in lobby, rimuove giocatori o annulla la stanza;
 - invia comandi espliciti `start`, `close`, `reveal`, `next`, `finish`.
 
 ### Display pubblico
@@ -90,7 +93,7 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 
 ### Route Handler Next.js
 
-- gestiscono sessione host, creazione sessione, transizioni e risultati protetti;
+- gestiscono sessione host, elenco/dettaglio stanze, creazione, gestione lobby, transizioni e risultati protetti;
 - usano `SUPABASE_SERVICE_ROLE_KEY` soltanto server-side;
 - validano payload, autorizzazione e fase;
 - restituiscono errori di dominio stabili senza dettagli interni.
@@ -98,7 +101,7 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 ### Supabase
 
 - conserva dati e stato autorevole;
-- esegue creazione, estrazione, join, voto e transizioni sensibili in transazione;
+- esegue creazione, estrazione, join, rimozione giocatore, annullamento stanza, voto e transizioni sensibili in transazione;
 - applica RLS e pubblica in Realtime solo i dati necessari.
 
 ## 5. Modello dati dei contenuti
@@ -301,9 +304,17 @@ Il Route Handler host, dopo la conferma della capienza, invoca un'operazione dat
 6. assegna e salva l'ordine definitivo;
 7. fallisce interamente se un'invariante non è rispettata.
 
-### `join_game_session(p_code, p_nickname)`
+### `join_game_session(p_code, p_nickname, p_avatar_key)`
 
-Normalizza gli input, blocca la sessione, verifica `lobby` e `participant_count < max_players`, crea o recupera il partecipante di `auth.uid()`, genera un avatar stabile e incrementa il conteggio solo al primo inserimento.
+Normalizza gli input, blocca la sessione, verifica `lobby`, capienza e unicità di nickname e avatar, crea o recupera il partecipante di `auth.uid()` e incrementa il conteggio solo al primo inserimento.
+
+### Gestione host della lobby
+
+`remove_lobby_player` blocca la sessione, accetta soltanto `lobby`, elimina il
+giocatore richiesto e decrementa `participant_count` nella stessa transazione,
+senza consentire valori negativi. `cancel_lobby_session` blocca e cancella una
+sessione ancora in lobby; snapshot e giocatori vengono eliminati tramite
+cascade. Entrambe le funzioni sono eseguibili soltanto da `service_role`.
 
 ### `submit_vote(p_session_id, p_session_question_id, p_session_option_id)`
 

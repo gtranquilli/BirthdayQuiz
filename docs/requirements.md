@@ -87,6 +87,7 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Il nickname è lungo 2–20 caratteri ed è univoco nella sessione senza distinzione tra maiuscole e minuscole.
 - Al primo ingresso crea una sessione Supabase anonima e un partecipante associato ad `auth.uid()`.
 - Il partecipante riceve un `avatar_key` da un set predefinito; non sono previsti upload o editor avatar.
+- Nickname e avatar sono entrambi univoci all'interno della sessione.
 - Un refresh sullo stesso browser ripristina partecipazione e avatar.
 - Raggiunto il massimo configurato dall'host, nuovi ingressi vengono rifiutati con un messaggio comprensibile.
 
@@ -95,6 +96,8 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 - Il display mostra titolo del quiz, codice sessione e numero di partecipanti.
 - Il telefono conferma l'ingresso e resta in attesa.
 - L'host vede conteggio e capienza; può vedere l'elenco dei partecipanti con avatar.
+- Durante la lobby l'host può rimuovere un partecipante o annullare definitivamente la stanza.
+- Rimozione e annullamento sono operazioni atomiche server-side e non sono più consentiti dopo l'avvio.
 - Nuovi ingressi sono ammessi soltanto in `lobby`; chi è già registrato può riconnettersi.
 - Soltanto l'host può avviare la prima domanda.
 

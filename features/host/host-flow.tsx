@@ -40,6 +40,17 @@ interface CreatedSession {
   readonly maxPlayers: number;
 }
 
+interface RecentSession {
+  readonly id: string;
+  readonly code: string;
+  readonly title: string;
+  readonly phase: string;
+  readonly participantCount: number;
+  readonly maxPlayers: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 interface HostFlowProps {
   readonly initiallyAuthenticated: boolean;
 }
@@ -98,8 +109,17 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
   const [error, setError] = useState<string | null>(null);
   const [createdSession, setCreatedSession] =
     useState<CreatedSession | null>(null);
+  const [recentSessions, setRecentSessions] = useState<
+    readonly RecentSession[]
+  >([]);
+  const [recentSessionsError, setRecentSessionsError] = useState<string | null>(
+    null,
+  );
   const [loggingIn, setLoggingIn] = useState(false);
   const [loadingQuizzes, setLoadingQuizzes] = useState(
+    initiallyAuthenticated,
+  );
+  const [loadingRecentSessions, setLoadingRecentSessions] = useState(
     initiallyAuthenticated,
   );
   const [creatingSession, setCreatingSession] = useState(false);
@@ -163,6 +183,43 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
     }
   }, []);
 
+  const loadRecentSessions = useCallback(async () => {
+    setLoadingRecentSessions(true);
+    setRecentSessionsError(null);
+
+    try {
+      const response = await fetch('/api/host/game-sessions', {
+        cache: 'no-store',
+      });
+      const payload = await readJson(response);
+
+      if (response.status === 401) {
+        setAuthenticated(false);
+        throw new Error('La sessione host è scaduta. Accedi di nuovo.');
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          getErrorMessage(payload, 'Impossibile caricare le stanze recenti.'),
+        );
+      }
+
+      if (!isRecord(payload) || !Array.isArray(payload.sessions)) {
+        throw new Error('L’elenco delle stanze ricevuto non è valido.');
+      }
+
+      setRecentSessions(payload.sessions as RecentSession[]);
+    } catch (loadError) {
+      setRecentSessionsError(
+        loadError instanceof Error
+          ? loadError.message
+          : 'Impossibile caricare le stanze recenti.',
+      );
+    } finally {
+      setLoadingRecentSessions(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!authenticated) {
       return;
@@ -170,10 +227,11 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
 
     const timeoutId = window.setTimeout(() => {
       void loadQuizzes();
+      void loadRecentSessions();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [authenticated, loadQuizzes]);
+  }, [authenticated, loadQuizzes, loadRecentSessions]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -230,6 +288,7 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
       setCategoryCounts({});
       setMaxPlayers('');
       setCreatedSession(null);
+      setRecentSessions([]);
     } catch (logoutError) {
       setError(
         logoutError instanceof Error
@@ -373,6 +432,7 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
         title: session.title,
         maxPlayers: session.maxPlayers,
       });
+      void loadRecentSessions();
     } catch (creationError) {
       setError(
         creationError instanceof Error
@@ -474,16 +534,90 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
                 <dd className='break-all font-mono'>{createdSession.id}</dd>
               </div>
             </dl>
-            <a
-              className='mt-5 inline-flex rounded-xl bg-emerald-700 px-4 py-2.5 font-semibold text-white hover:bg-emerald-800'
-              href={`/display/${createdSession.code}`}
-              target='_blank'
-              rel='noreferrer'
-            >
-              Apri il display della lobby
-            </a>
+            <div className='mt-5 flex flex-wrap gap-3'>
+              <a
+                className='inline-flex rounded-xl bg-emerald-700 px-4 py-2.5 font-semibold text-white hover:bg-emerald-800'
+                href={`/host/${createdSession.code}`}
+              >
+                Gestisci la stanza
+              </a>
+              <a
+                className='inline-flex rounded-xl border border-emerald-300 bg-white px-4 py-2.5 font-semibold text-emerald-800 hover:bg-emerald-100'
+                href={`/display/${createdSession.code}`}
+                target='_blank'
+                rel='noreferrer'
+              >
+                Apri il display
+              </a>
+            </div>
           </section>
         ) : null}
+
+        <section className='mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
+          <div className='flex items-center justify-between gap-4'>
+            <div>
+              <h2 className='text-xl font-black text-slate-950'>Stanze recenti</h2>
+              <p className='mt-1 text-sm text-slate-500'>
+                Riapri una stanza per controllare capienza e giocatori.
+              </p>
+            </div>
+            <button
+              className='text-sm font-semibold text-indigo-700 hover:text-indigo-900 disabled:opacity-50'
+              type='button'
+              onClick={() => void loadRecentSessions()}
+              disabled={loadingRecentSessions}
+            >
+              Aggiorna
+            </button>
+          </div>
+
+          {recentSessionsError ? (
+            <p className='mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700'>
+              {recentSessionsError}
+            </p>
+          ) : null}
+
+          {loadingRecentSessions ? (
+            <p className='mt-5 text-sm text-slate-500'>Caricamento stanze…</p>
+          ) : recentSessions.length === 0 ? (
+            <p className='mt-5 rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-500'>
+              Nessuna stanza recente.
+            </p>
+          ) : (
+            <ul className='mt-5 divide-y divide-slate-200'>
+              {recentSessions.map((session) => (
+                <li
+                  className='flex flex-wrap items-center gap-4 py-4 first:pt-0 last:pb-0'
+                  key={session.id}
+                >
+                  <div className='min-w-28'>
+                    <p className='font-black tracking-[0.16em] text-indigo-700'>
+                      {session.code}
+                    </p>
+                    <p className='mt-1 text-xs font-semibold text-slate-500'>
+                      {session.phase}
+                    </p>
+                  </div>
+                  <div className='min-w-0 flex-1'>
+                    <p className='truncate font-bold text-slate-950'>
+                      {session.title}
+                    </p>
+                    <p className='mt-1 text-xs text-slate-500'>
+                      {session.participantCount} / {session.maxPlayers} giocatori ·{' '}
+                      {new Date(session.createdAt).toLocaleString('it-IT')}
+                    </p>
+                  </div>
+                  <a
+                    className='rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50'
+                    href={`/host/${session.code}`}
+                  >
+                    Riapri
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
         <section className='mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-7'>
           {loadingQuizzes ? (

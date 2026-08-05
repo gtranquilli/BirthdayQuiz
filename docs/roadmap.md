@@ -81,6 +81,8 @@ Obiettivo: giocare tutte le domande con le tre superfici, anche con UI essenzial
 - [ ] Creare o ripristinare Auth anonimo nel browser partecipante.
 - [ ] Implementare `join_game_session` con nickname, fase e capienza atomica.
 - [ ] Assegnare e conservare un avatar visuale stabile.
+- [ ] Impedire avatar duplicati nella stessa stanza.
+- [ ] Consentire all'host di riaprire stanze recenti, rimuovere giocatori e annullare una lobby.
 - [ ] Completare `/`, `/play/[code]`, `/host/[code]` e `/display/[code]` per la lobby.
 
 Verifica: due sessioni browser entrano; refresh non duplica; il partecipante oltre capienza viene rifiutato.

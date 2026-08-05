@@ -31,6 +31,17 @@ interface CreatedSessionRow {
   readonly max_players: number;
 }
 
+interface GameSessionSummaryRow {
+  readonly id: string;
+  readonly code: string;
+  readonly quiz_title: string;
+  readonly phase: string;
+  readonly participant_count: number;
+  readonly max_players: number;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -125,6 +136,66 @@ function databaseErrorResponse(code: string | undefined) {
     { error: 'Impossibile creare la partita.' },
     { status: 500 },
   );
+}
+
+export async function GET(request: NextRequest) {
+  const authenticated = verifyHostSessionToken(
+    request.cookies.get(HOST_SESSION_COOKIE_NAME)?.value,
+  );
+
+  if (!authenticated) {
+    return NextResponse.json(
+      { error: 'Sessione host non valida o scaduta.' },
+      { status: 401 },
+    );
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from('game_sessions')
+      .select(
+        'id,code,quiz_title,phase,participant_count,max_players,created_at,updated_at',
+      )
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Supabase error in GET /api/host/game-sessions', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      });
+      return NextResponse.json(
+        { error: 'Impossibile caricare le stanze recenti.' },
+        { status: 500 },
+      );
+    }
+
+    const sessions = ((data ?? []) as GameSessionSummaryRow[]).map(
+      (session) => ({
+        id: session.id,
+        code: session.code,
+        title: session.quiz_title,
+        phase: session.phase,
+        participantCount: session.participant_count,
+        maxPlayers: session.max_players,
+        createdAt: session.created_at,
+        updatedAt: session.updated_at,
+      }),
+    );
+
+    return NextResponse.json(
+      { sessions },
+      { headers: { 'Cache-Control': 'no-store' } },
+    );
+  } catch {
+    return NextResponse.json(
+      { error: 'Configurazione Supabase server non disponibile.' },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {

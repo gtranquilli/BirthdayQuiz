@@ -110,6 +110,13 @@ function rpcErrorResponse(error: SupabaseRpcError) {
     );
   }
 
+  if (error.code === 'P0001' && message.includes('avatar')) {
+    return NextResponse.json(
+      { error: 'Questo avatar è già occupato nella stanza.' },
+      { status: 409 },
+    );
+  }
+
   if (error.code === 'P0001' && message.includes('lobby')) {
     return NextResponse.json(
       { error: 'La partita è già iniziata e non accetta nuovi giocatori.' },

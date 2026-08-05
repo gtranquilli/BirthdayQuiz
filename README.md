@@ -47,8 +47,8 @@ Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `fi
 | --- | --- | --- |
 | `/` | Partecipante | Inserimento di codice sessione e nickname |
 | `/play/[code]` | Partecipante | Attesa, voto, esito personale e classifica |
-| `/host` | Host | Accesso, configurazione e creazione sessione |
-| `/host/[code]` | Host | Controlli della partita e monitoraggio |
+| `/host` | Host | Accesso, configurazione, creazione e stanze recenti |
+| `/host/[code]` | Host | Capienza, giocatori, rimozione e annullamento lobby |
 | `/display/[code]` | Pubblico | Lobby, domanda, conteggio, reveal e classifica |
 
 ## Architettura in breve
