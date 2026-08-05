@@ -36,7 +36,7 @@ Restano fuori scope editor completo, marketplace, gestione utenti, creazione pub
 
 1. L'host sceglie quiz e preset e adatta i conteggi per categoria.
 2. Inserisce il massimo giocatori e conferma la creazione.
-3. I partecipanti entrano in lobby con nickname e avatar.
+3. Il display mostra un QR verso `/join/[code]`; dopo la scansione il partecipante sceglie soltanto nickname e avatar. La home conserva l’inserimento manuale del codice come fallback.
 4. L'host avvia: il sistema estrae e congela domande, quattro risposte, soluzioni, punteggi e ordine, poi apre la prima domanda.
 5. L'host chiude il voto e poi attiva separatamente il reveal con soluzione e avatar.
 6. Dopo ogni reveal può aprire la domanda successiva o terminare con la classifica finale.
@@ -47,7 +47,8 @@ Le fasi restano `lobby`, `voting_open`, `voting_closed`, `answer_revealed` e `fi
 
 | Rotta | Utente | Responsabilità |
 | --- | --- | --- |
-| `/` | Partecipante | Inserimento di codice sessione e nickname |
+| `/` | Partecipante | Inserimento manuale del solo codice come fallback |
+| `/join/[code]` | Partecipante | Verifica stanza, Auth anonima, scelta nickname/avatar e ingresso |
 | `/play/[code]` | Partecipante | Attesa, voto persistente, recovery, punti ed esito finale |
 | `/host` | Host | Accesso, configurazione, creazione e stanze recenti |
 | `/host/[code]` | Host | Gestione lobby, transizioni, scoring, avanzamento e fine partita |
@@ -84,3 +85,21 @@ Occorre predisporre in formato strutturato il quiz di Giorgio: categorie, domand
 4. Installare le dipendenze con `npm install` e avviare con `npm run dev`.
 
 Controlli disponibili: `npm run lint`, `npm run typecheck` e `npm run build`.
+
+## Configurazione Vercel
+
+Configurare nel progetto Vercel le stesse variabili di `.env.example`, senza
+inserire i valori nel repository:
+
+| Variabile | Visibilità | Uso |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Browser e server | URL del progetto Supabase |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser e server | Chiave pubblicabile soggetta a RLS |
+| `SUPABASE_SERVICE_ROLE_KEY` | Solo server | Operazioni host privilegiate |
+| `HOST_ACCESS_PASSWORD` | Solo server | Password condivisa host |
+| `HOST_SESSION_SECRET` | Solo server | Firma del cookie host; almeno 32 caratteri casuali |
+
+Non serve una variabile con il dominio Vercel: QR e link di invito derivano da
+`window.location.origin`, quindi usano automaticamente il dominio del deploy.
+Nel progetto Supabase deve essere abilitato l’accesso anonimo. Dopo il deploy,
+provare QR e clipboard sull’URL HTTPS definitivo di Vercel.

@@ -2,6 +2,7 @@
 
 import { AvatarBadge } from '@/components/avatar-badge';
 import { Leaderboard } from '@/components/leaderboard';
+import { RoomJoinQrCode } from '@/components/room-join-qr-code';
 import { normalizeGameCode } from '@/lib/game/lobby';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
@@ -266,19 +267,24 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
           </span>
         </header>
 
-        <section className='mt-8 grid flex-1 gap-8 lg:grid-cols-[minmax(20rem,0.8fr)_1.5fr]'>
-          <div className='flex flex-col justify-center rounded-3xl bg-indigo-600 p-8 text-center shadow-2xl shadow-indigo-950/40'>
-            <p className='text-lg font-bold uppercase tracking-[0.2em] text-indigo-100'>
+        <section className='mt-7 grid flex-1 gap-7 lg:grid-cols-[minmax(24rem,0.95fr)_1.2fr]'>
+          <div className='flex min-w-0 flex-col items-center justify-center rounded-3xl bg-indigo-600 p-6 text-center shadow-2xl shadow-indigo-950/40'>
+            <p className='text-xl font-black uppercase tracking-[0.16em] text-white'>
+              Scansiona per partecipare
+            </p>
+            <RoomJoinQrCode
+              className='mt-5 w-full text-indigo-50'
+              code={snapshot.code}
+              size={360}
+            />
+            <p className='mt-5 text-sm font-bold uppercase tracking-[0.2em] text-indigo-200'>
               Codice stanza
             </p>
-            <p className='mt-5 text-6xl font-black tracking-[0.18em] sm:text-7xl lg:text-8xl'>
+            <p className='mt-2 text-5xl font-black tracking-[0.18em] lg:text-6xl'>
               {snapshot.code}
             </p>
-            <p className='mt-7 text-2xl font-bold text-indigo-50'>
+            <p className='mt-4 text-2xl font-bold text-indigo-50'>
               {snapshot.participantCount} / {snapshot.maxPlayers} giocatori
-            </p>
-            <p className='mt-3 text-indigo-200'>
-              Apri questa app sul telefono e inserisci il codice.
             </p>
           </div>
 

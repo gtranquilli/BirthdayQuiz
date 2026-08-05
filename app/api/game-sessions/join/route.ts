@@ -96,6 +96,13 @@ function rpcErrorResponse(error: SupabaseRpcError) {
     );
   }
 
+  if (error.code === '23505' && message.includes('avatar')) {
+    return NextResponse.json(
+      { error: 'Questo avatar è già occupato nella stanza.' },
+      { status: 409 },
+    );
+  }
+
   if (error.code === '23505') {
     return NextResponse.json(
       { error: 'Questo nickname è già usato nella stanza.' },

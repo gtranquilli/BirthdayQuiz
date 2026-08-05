@@ -79,11 +79,12 @@ Obiettivo: giocare tutte le domande con le tre superfici, anche con UI essenzial
 
 - [ ] Proteggere le operazioni host con password ambiente e cookie firmato.
 - [ ] Creare o ripristinare Auth anonimo nel browser partecipante.
+- [x] Aprire `/join/[code]` tramite QR e mantenere la home come fallback per il codice.
 - [ ] Implementare `join_game_session` con nickname, fase e capienza atomica.
 - [ ] Assegnare e conservare un avatar visuale stabile.
 - [ ] Impedire avatar duplicati nella stessa stanza.
 - [ ] Consentire all'host di riaprire stanze recenti, rimuovere giocatori e annullare una lobby.
-- [ ] Completare `/`, `/play/[code]`, `/host/[code]` e `/display/[code]` per la lobby.
+- [x] Completare `/`, `/join/[code]`, `/play/[code]`, `/host/[code]` e `/display/[code]` per la lobby.
 
 Verifica: due sessioni browser entrano; refresh non duplica; il partecipante oltre capienza viene rifiutato.
 
@@ -136,6 +137,7 @@ Obiettivo: provare il flusso reale, correggere difetti bloccanti e congelare la 
 
 - [ ] Ottimizzare `/play` per touch e schermi da 320 px.
 - [ ] Ottimizzare `/display` per distanza e 16:9, inclusi gruppi di avatar leggibili.
+- [x] Mostrare un QR locale ad alto contrasto su display e host soltanto durante la lobby.
 - [ ] Distinguere pending, voto salvato, voto chiuso e offline.
 - [ ] Rispettare `prefers-reduced-motion` nel reveal.
 - [ ] Confermare la chiusura host se non tutti hanno votato.

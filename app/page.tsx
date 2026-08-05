@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { JoinGameForm } from '@/features/player/join-game-form';
+import { JoinCodeForm } from '@/features/player/join-code-form';
 
 export const metadata: Metadata = {
   title: 'Entra nella partita | Quiz Engine',
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <main className='min-h-screen bg-slate-100 px-4 py-8 sm:grid sm:place-items-center sm:py-12'>
-      <section className='mx-auto w-full max-w-2xl rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-8'>
+      <section className='mx-auto w-full max-w-md rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-200 sm:p-8'>
         <p className='text-sm font-bold uppercase tracking-wide text-indigo-600'>
           Quiz Engine
         </p>
@@ -17,11 +17,10 @@ export default function Home() {
           Entra nella partita
         </h1>
         <p className='mt-2 text-sm text-slate-600 sm:text-base'>
-          Inserisci il codice mostrato sul display, scegli un nickname e il tuo
-          avatar.
+          Se non puoi scansionare il QR, inserisci il codice mostrato sul display.
         </p>
         <div className='mt-7'>
-          <JoinGameForm />
+          <JoinCodeForm />
         </div>
       </section>
     </main>

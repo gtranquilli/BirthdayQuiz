@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AvatarBadge } from '@/components/avatar-badge';
 import { Leaderboard } from '@/components/leaderboard';
+import { RoomJoinQrCode } from '@/components/room-join-qr-code';
 import { useLobbySession } from '@/features/lobby/use-lobby-session';
 import { getAnswerPositionLabel } from '@/lib/game/answer-position';
 import { normalizeGameCode } from '@/lib/game/lobby';
@@ -122,6 +123,8 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
   const [closingVoting, setClosingVoting] = useState(false);
   const [revealingAnswer, setRevealingAnswer] = useState(false);
   const [advancing, setAdvancing] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+  const copyResetTimeout = useRef<number | null>(null);
 
   const loadSession = useCallback(async () => {
     const response = await fetch(`/api/host/game-sessions/${code}`, {
@@ -157,6 +160,15 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
     const loadId = window.setTimeout(() => void loadSession(), 0);
     return () => window.clearTimeout(loadId);
   }, [loadSession, snapshot]);
+
+  useEffect(
+    () => () => {
+      if (copyResetTimeout.current !== null) {
+        window.clearTimeout(copyResetTimeout.current);
+      }
+    },
+    [],
+  );
 
   async function removePlayer(player: HostRoomPlayer) {
     if (!window.confirm(`Rimuovere ${player.nickname} dalla lobby?`)) {
@@ -348,6 +360,36 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
     }
   }
 
+  async function copyInviteLink() {
+    setError(null);
+
+    try {
+      if (!navigator.clipboard) {
+        throw new Error('La copia non è supportata da questo browser.');
+      }
+
+      const inviteUrl = `${window.location.origin}/join/${code}`;
+      await navigator.clipboard.writeText(inviteUrl);
+      setLinkCopied(true);
+
+      if (copyResetTimeout.current !== null) {
+        window.clearTimeout(copyResetTimeout.current);
+      }
+
+      copyResetTimeout.current = window.setTimeout(() => {
+        setLinkCopied(false);
+        copyResetTimeout.current = null;
+      }, 2500);
+    } catch (copyError) {
+      setLinkCopied(false);
+      setError(
+        copyError instanceof Error
+          ? copyError.message
+          : 'Impossibile copiare il link di invito.',
+      );
+    }
+  }
+
   if (loading) {
     return (
       <main className='grid min-h-screen place-items-center bg-slate-100 p-6'>
@@ -445,6 +487,33 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
             </div>
           </dl>
         </section>
+
+        {isLobby ? (
+          <section className='mt-5 grid items-center gap-5 rounded-2xl bg-white p-5 ring-1 ring-slate-200 sm:grid-cols-[auto_1fr]'>
+            <RoomJoinQrCode code={session.code} size={200} />
+            <div className='min-w-0 text-center sm:text-left'>
+              <h2 className='text-xl font-black text-slate-950'>
+                Invita i partecipanti
+              </h2>
+              <p className='mt-2 text-sm text-slate-600'>
+                Fai scansionare il QR oppure condividi il link pubblico della stanza.
+              </p>
+              <button
+                className='mt-4 min-h-11 rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white hover:bg-indigo-700'
+                type='button'
+                onClick={() => void copyInviteLink()}
+              >
+                Copia link di invito
+              </button>
+              <p
+                aria-live='polite'
+                className='mt-2 min-h-5 text-sm font-bold text-emerald-700'
+              >
+                {linkCopied ? 'Link copiato' : ''}
+              </p>
+            </div>
+          </section>
+        ) : null}
 
         <div className='mt-5 flex flex-wrap gap-3'>
           {isLobby ? (

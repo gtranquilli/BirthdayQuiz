@@ -18,6 +18,10 @@ interface JoinedPlayerResponse {
   readonly avatarKey: AvatarKey;
 }
 
+interface JoinGameFormProps {
+  readonly code: string;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -55,10 +59,10 @@ function parseJoinedPlayer(value: unknown): JoinedPlayerResponse | null {
   };
 }
 
-export function JoinGameForm() {
+export function JoinGameForm({ code: rawCode }: JoinGameFormProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
-  const [code, setCode] = useState('');
+  const code = normalizeGameCode(rawCode);
   const [nickname, setNickname] = useState('');
   const [avatarKey, setAvatarKey] = useState<AvatarKey>(AVATARS[0].key);
   const [submitting, setSubmitting] = useState(false);
@@ -68,10 +72,9 @@ export function JoinGameForm() {
     event.preventDefault();
     setError(null);
 
-    const normalizedCode = normalizeGameCode(code);
     const normalizedNickname = nickname.trim().replace(/\s+/g, ' ');
 
-    if (!GAME_CODE_PATTERN.test(normalizedCode)) {
+    if (!GAME_CODE_PATTERN.test(code)) {
       setError('Inserisci un codice stanza valido di 6 caratteri.');
       return;
     }
@@ -115,7 +118,7 @@ export function JoinGameForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          code: normalizedCode,
+          code,
           nickname: normalizedNickname,
           avatarKey,
         }),
@@ -155,53 +158,37 @@ export function JoinGameForm() {
 
   return (
     <form className='space-y-6' onSubmit={handleSubmit}>
-      <div className='grid gap-4 sm:grid-cols-2'>
-        <label className='block text-sm font-semibold text-slate-800'>
-          Codice stanza
-          <input
-            className='mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-center text-xl font-black uppercase tracking-[0.2em] text-slate-950 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
-            type='text'
-            inputMode='text'
-            autoComplete='one-time-code'
-            maxLength={6}
-            placeholder='ABC234'
-            value={code}
-            onChange={(event) =>
-              setCode(event.target.value.toUpperCase().replace(/\s/g, ''))
-            }
-            disabled={submitting}
-            required
-          />
-        </label>
-        <label className='block text-sm font-semibold text-slate-800'>
-          Nickname
-          <input
-            className='mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-950 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
-            type='text'
-            autoComplete='nickname'
-            minLength={2}
-            maxLength={20}
-            placeholder='Come vuoi chiamarti?'
-            value={nickname}
-            onChange={(event) => setNickname(event.target.value)}
-            disabled={submitting}
-            required
-          />
-        </label>
-      </div>
+      <label className='block text-sm font-semibold text-slate-800'>
+        Nickname
+        <input
+          className='mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 py-3 text-base text-slate-950 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100'
+          type='text'
+          inputMode='text'
+          autoComplete='off'
+          autoCapitalize='words'
+          enterKeyHint='done'
+          minLength={2}
+          maxLength={20}
+          placeholder='Come vuoi chiamarti?'
+          value={nickname}
+          onChange={(event) => setNickname(event.target.value)}
+          disabled={submitting}
+          required
+        />
+      </label>
 
       <fieldset>
         <legend className='text-sm font-semibold text-slate-800'>
           Scegli il tuo avatar
         </legend>
-        <div className='mt-3 grid grid-cols-4 gap-3 sm:grid-cols-6'>
+        <div className='mt-3 grid grid-cols-4 gap-2.5 sm:grid-cols-6 sm:gap-3'>
           {AVATARS.map((avatar) => {
             const selected = avatar.key === avatarKey;
             return (
               <button
                 aria-label={`Scegli ${avatar.label}`}
                 aria-pressed={selected}
-                className={`flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border p-2 text-xs font-medium transition focus:outline-none focus:ring-4 focus:ring-indigo-100 ${
+                className={`flex min-h-20 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border p-2 text-xs font-medium transition focus:outline-none focus:ring-4 focus:ring-indigo-100 ${
                   selected
                     ? 'border-indigo-600 bg-indigo-50 text-indigo-900'
                     : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'
@@ -212,7 +199,7 @@ export function JoinGameForm() {
                 disabled={submitting}
               >
                 <AvatarBadge avatarKey={avatar.key} size='sm' />
-                <span>{avatar.label}</span>
+                <span className='w-full truncate'>{avatar.label}</span>
               </button>
             );
           })}

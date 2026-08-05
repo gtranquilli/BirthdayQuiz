@@ -14,7 +14,7 @@ Accede con la password condivisa dell'MVP, sceglie quiz e preset, adatta la conf
 
 ### Partecipante
 
-Entra con codice e nickname, riceve un avatar di gioco, vota da smartphone e vede conferma, rivelazione, punti e classifica. Usa `/` e `/play/[code]`. Il browser riceve una sessione Supabase anonima; non è richiesta un'email.
+Scansiona il QR della lobby, sceglie nickname e avatar, vota da smartphone e vede conferma, rivelazione, punti e classifica. Usa `/join/[code]` e `/play/[code]`; `/` conserva l’inserimento manuale del codice come fallback. Il browser riceve una sessione Supabase anonima; non è richiesta un'email.
 
 ### Pubblico
 
@@ -82,7 +82,8 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 
 ### RF-03 — Ingresso partecipante
 
-- Il partecipante inserisce codice e nickname dalla home.
+- Il QR della lobby apre `/join/[code]`, dove il codice è già presente e il partecipante sceglie soltanto nickname e avatar.
+- La home richiede soltanto il codice e reindirizza alla stessa pagina di join.
 - Il sistema normalizza il codice, valida nickname, fase e capienza e impedisce duplicati.
 - Il nickname è lungo 2–20 caratteri ed è univoco nella sessione senza distinzione tra maiuscole e minuscole.
 - Al primo ingresso crea una sessione Supabase anonima e un partecipante associato ad `auth.uid()`.
@@ -93,7 +94,8 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
 
 ### RF-04 — Lobby
 
-- Il display mostra titolo del quiz, codice sessione e numero di partecipanti.
+- Il display mostra titolo, codice, numero di partecipanti e un QR locale contenente l’URL pubblico `/join/[code]`.
+- Host e display derivano il link dall’origine corrente, senza domini hardcoded o servizi QR esterni; QR e link scompaiono dopo la lobby.
 - Il telefono conferma l'ingresso e resta in attesa.
 - L'host vede conteggio e capienza; può vedere l'elenco dei partecipanti con avatar.
 - Durante la lobby l'host può rimuovere un partecipante o annullare definitivamente la stanza.

@@ -47,6 +47,7 @@ La struttura è indicativa e verrà creata durante l'implementazione:
 ```text
 app/
   page.tsx
+  join/[code]/page.tsx
   play/[code]/page.tsx
   host/page.tsx
   host/[code]/page.tsx
@@ -78,6 +79,7 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 ### Browser partecipante
 
 - crea o ripristina la sessione anonima;
+- apre `/join/[code]` dal QR e sceglie soltanto nickname e avatar;
 - invoca `join_game_session` e `submit_vote`;
 - carica lo snapshot e ascolta la sessione via Realtime;
 - mostra solo la propria scelta prima del reveal;
@@ -95,6 +97,7 @@ Attesa, voto, rivelazione e classifica sono stati delle tre rotte esistenti, non
 ### Display pubblico
 
 - è read-only;
+- in lobby genera nel browser un QR verso `${window.location.origin}/join/[code]`, senza persistenza o servizi esterni;
 - durante `voting_open` e `voting_closed` mostra domanda, quattro risposte e solo il conteggio aggregato dei votanti;
 - dopo `answer_revealed` riceve soluzione e associazioni avatar-risposta da un endpoint che verifica la fase.
 
