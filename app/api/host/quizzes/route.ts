@@ -37,6 +37,26 @@ interface QuestionRow {
   readonly category_id: string;
 }
 
+interface SupabaseErrorDetails {
+  readonly code: string;
+  readonly message: string;
+  readonly details: string;
+  readonly hint: string;
+}
+
+function logSupabaseError(
+  resource: string,
+  error: SupabaseErrorDetails,
+): void {
+  console.error('Supabase error in GET /api/host/quizzes', {
+    resource,
+    code: error.code,
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+  });
+}
+
 export async function GET(request: NextRequest) {
   const authenticated = verifyHostSessionToken(
     request.cookies.get(HOST_SESSION_COOKIE_NAME)?.value,
@@ -75,13 +95,23 @@ export async function GET(request: NextRequest) {
       admin.from('questions').select('category_id'),
     ]);
 
-    if (
-      quizzesResult.error ||
-      categoriesResult.error ||
-      presetsResult.error ||
-      rulesResult.error ||
-      questionsResult.error
-    ) {
+    const queryErrors = [
+      ['quizzes', quizzesResult.error],
+      ['quiz_categories', categoriesResult.error],
+      ['quiz_presets', presetsResult.error],
+      ['preset_category_rules', rulesResult.error],
+      ['questions', questionsResult.error],
+    ] as const;
+    let hasQueryError = false;
+
+    for (const [resource, error] of queryErrors) {
+      if (error) {
+        hasQueryError = true;
+        logSupabaseError(resource, error);
+      }
+    }
+
+    if (hasQueryError) {
       return NextResponse.json(
         { error: 'Impossibile caricare quiz e preset.' },
         { status: 500 },
