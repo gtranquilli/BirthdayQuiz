@@ -352,3 +352,11 @@ per Esame valgono le eccezioni esplicite seguenti.
 Criteri di accettazione: tutti gli scenari in `docs/exam-testing.md`, compresa la
 regressione Presentazione e la verifica multi-connessione dei lock su PostgreSQL.
 Nessuna migration remota, deploy o commit è parte di questa implementazione.
+
+### Configurazione Host: correzioni Preview
+
+Il numero di domande Esame usa uno slider intero (step 1), da 1 al numero di
+domande valide disponibili, entro il limite di sessione già previsto. Il valore
+corrente è sempre visibile; un quiz senza domande valide non consente creazione.
+La capienza conserva il campo obbligatorio inizialmente vuoto e viene confermata
+in un dialogo HTML non bloccante prima della richiesta di creazione.

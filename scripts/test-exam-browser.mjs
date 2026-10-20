@@ -91,7 +91,8 @@ try {
           image_alt_text: 'Immagine risposta di prova', image_width: 400, image_height: 300, image_updated_at: '2026-10-20T10:00:00Z',
         });
       }
-      const publicSnapshot = () => ({
+      let presentationSnapshot = null;
+      const publicSnapshot = () => presentationSnapshot ?? ({
         code: 'ABCDEF',
         quiz_title: 'Esame di prova',
         phase,
@@ -111,7 +112,15 @@ try {
         leaderboard: [],
         submitted_count: progress.filter((p) => p.submitted_at).length,
       });
+      const liveChannels = new Set();
+      const broadcast = () => {
+        for (const entry of liveChannels) entry.send('postgres_changes', { ids: [1], data: {
+          schema: 'public', table: 'lobby_public_sessions', type: 'UPDATE', columns: [],
+          record: publicSnapshot(), old_record: {}, commit_timestamp: new Date().toISOString(), errors: null,
+        } });
+      };
       const runtimeErrors = [];
+      let nativeDialogs = 0;
       let lastCreated;
       let rejoinCalls = 0;
       const contexts = [];
@@ -177,10 +186,29 @@ try {
               url: base,
             },
           ]);
-          await context.addInitScript(() =>
-            localStorage.setItem('quiz-engine:rejoin:ABCDEF', 'a'.repeat(43)),
-          );
+          await context.addInitScript(() => {
+            if (location.hostname === 'localhost') localStorage.setItem('quiz-engine:rejoin:ABCDEF', 'a'.repeat(43));
+          });
         }
+        await context.routeWebSocket(/127\.0\.0\.1:54329\/realtime\//, ws => {
+          const joined = new Map();
+          ws.onMessage(raw => {
+            const [joinRef, ref, topic, event, payload] = JSON.parse(String(raw));
+            if (event === 'phx_join') {
+              const entry = { context, topic, send: (event, payload) => ws.send(JSON.stringify([joinRef, null, topic, event, payload])) };
+              joined.set(topic, entry); liveChannels.add(entry);
+              ws.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: {
+                postgres_changes: payload.config.postgres_changes.map(filter => ({ ...filter, id: 1 })),
+              } }]));
+            } else if (event === 'phx_leave') {
+              liveChannels.delete(joined.get(topic)); joined.delete(topic);
+              ws.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: {} }]));
+            } else if (event === 'heartbeat') {
+              ws.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response: {} }]));
+            }
+          });
+          ws.onClose(() => { for (const entry of joined.values()) liveChannels.delete(entry); });
+        });
         await context.route('**/*', async (route) => {
           const url = new URL(route.request().url());
           const path = url.pathname;
@@ -221,6 +249,7 @@ try {
                 p.completed_count = p.questions.filter(
                   (q) => q.selected_option_id,
                 ).length;
+                broadcast();
               }
               if (path.endsWith('/submit_exam') && !p.submitted_at) {
                 p.submitted_at = new Date().toISOString();
@@ -239,6 +268,7 @@ try {
                   points: correct * 100,
                 };
                 if (progress.every((p) => p.submitted_at)) phase = 'finished';
+                broadcast();
               }
               return json(p);
             }
@@ -269,7 +299,8 @@ try {
                 },
               });
             }
-            return json({ sessions: [] });
+            return json({ sessions: lastCreated ? [{ id: 'fixture', code: 'ABCDEF', title: 'Esame di prova', phase,
+              participantCount: 2, maxPlayers: 2, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }] : [] });
           }
           if (path === '/api/host/game-sessions/ABCDEF')
             return json({
@@ -290,8 +321,25 @@ try {
                 })),
               },
             });
+          if (presentationSnapshot && /\/ABCDEF\/(close|reveal|advance)$/.test(path)) {
+            const action = path.split('/').at(-1);
+            phase = action === 'close' ? 'voting_closed' : action === 'reveal' ? 'answer_revealed' : 'finished';
+            presentationSnapshot.phase = phase;
+            if (action === 'reveal') {
+              presentationSnapshot.correct_option_id = 'q0-o0';
+              presentationSnapshot.non_voters = presentationSnapshot.players;
+              for (const [i, option] of presentationSnapshot.current_question.options.entries())
+                Object.assign(option, { is_correct: i === 0, vote_count: 0, players: [] });
+            } else if (action === 'advance') {
+              presentationSnapshot.current_question = null;
+              presentationSnapshot.correct_option_id = null;
+              presentationSnapshot.non_voters = [];
+            }
+            broadcast(); return json({ success: true });
+          }
           if (path.endsWith('/ABCDEF/start')) {
             phase = 'voting_open';
+            broadcast();
             return json({ started: true, mode: 'exam' });
           }
           if (path.endsWith('/ABCDEF/exam')) {
@@ -327,7 +375,7 @@ try {
         page.setDefaultTimeout(15000);
         page.setDefaultNavigationTimeout(20000);
         page.on('pageerror', (error) => runtimeErrors.push(error.message));
-        page.on('dialog', (dialog) => dialog.accept());
+        page.on('dialog', (dialog) => { nativeDialogs++; return dialog.accept(); });
         return page;
       }
       // WebKit on Windows is tested in one active mobile context; multi-context
@@ -363,27 +411,49 @@ try {
       await host.goto(`${base}/host`);
       await host.getByLabel('Modalità').selectOption('exam');
       await expect(host.getByText('Domande per categoria')).toHaveCount(0);
-      await host.getByLabel('Numero di domande').fill('3');
+      const slider = host.getByRole('slider', { name: 'Numero di domande' });
+      await expect(slider).toHaveAttribute('min', '1'); await expect(slider).toHaveAttribute('max', '3');
+      await slider.focus(); await slider.press('Home'); await expect(slider).toHaveValue('1');
+      await slider.press('ArrowRight'); await expect(slider).toHaveValue('2'); await slider.press('End'); await expect(slider).toHaveValue('3');
+      await expect(host.getByRole('status').filter({ hasText: '3 / 3' })).toBeVisible();
       await expect(host.getByLabel('Numero massimo giocatori')).toHaveValue('');
       await host.getByLabel('Numero massimo giocatori').fill('2');
       await host
         .getByRole('button', { name: 'Crea partita', exact: true })
         .click();
+      await expect(host.getByRole('dialog', { name: 'Conferma creazione' })).toBeVisible();
+      assert.equal(lastCreated, undefined, 'No creation before explicit confirmation');
+      assert.equal(nativeDialogs, 0, 'Create does not block on window.confirm');
+      await host.getByRole('button', { name: 'Annulla', exact: true }).click();
+      await host.getByRole('button', { name: 'Crea partita', exact: true }).click();
+      await host.getByRole('button', { name: 'Conferma e crea' }).click();
       await expect(
         host.getByText('Partita creata', { exact: true }),
       ).toBeVisible();
       assert.equal(lastCreated.mode, 'exam');
       assert.equal(lastCreated.questionCount, 3);
-      await host.goto(`${base}/host/ABCDEF`);
+      const capacity = await host.getByLabel('Numero massimo giocatori').boundingBox();
+      const capacityLabel = await host.locator('label > span').filter({ hasText: 'Numero massimo giocatori' }).boundingBox();
+      assert.ok(capacity.y >= capacityLabel.y + capacityLabel.height, 'Capacity input is below its label');
+      await host.setViewportSize({ width: 320, height: 800 });
+      assert.ok(await host.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Host configuration fits mobile');
+      const mobileInput = await host.getByLabel('Numero massimo giocatori').boundingBox();
+      const mobileLabel = await host.locator('label > span').filter({ hasText: 'Numero massimo giocatori' }).boundingBox();
+      assert.ok(mobileInput.y >= mobileLabel.y + mobileLabel.height);
+      await expect(slider).toBeVisible();
+      await host.setViewportSize({ width: 1280, height: 720 });
+      await host.getByRole('link', { name: 'Riapri', exact: true }).click();
       await display.goto(`${base}/display/ABCDEF`);
       await one.goto(`${base}/play/ABCDEF`);
       await two.goto(`${base}/play/ABCDEF`);
       await expect(one.getByText('In attesa che l’host inizi')).toBeVisible();
       await host.getByRole('button', { name: 'Avvia esame' }).click();
-      await host.reload();
-      await display.reload();
-      await one.reload();
-      await two.reload();
+      await expect(host.getByText('Esame in corso: ogni partecipante avanza autonomamente.')).toBeVisible();
+      assert.equal([...liveChannels].filter(c => c.context === host.context()).length, 1, 'Parent and ExamHost share a single channel');
+      await host.getByRole('link', { name: 'Tutte le stanze', exact: false }).click();
+      await host.getByRole('link', { name: 'Riapri', exact: true }).click();
+      await expect(host.getByText('Esame in corso: ogni partecipante avanza autonomamente.')).toBeVisible();
+      assert.equal([...liveChannels].filter(c => c.context === host.context()).length, 1, 'One channel after reopening');
       await one.bringToFront();
       await expect(
         one.getByRole('heading', { name: 'Domanda di prova 1' }),
@@ -479,7 +549,6 @@ try {
         two.getByText('Risposta corretta', { exact: false }),
       ).toHaveCount(0);
       await host.bringToFront();
-      await host.reload();
       await host.getByRole('button', { name: /punti · Correzione/ }).click();
       await expect(
         host.getByRole('heading', { name: 'Risultato di Primo' }),
@@ -496,7 +565,6 @@ try {
         two.getByRole('heading', { name: 'Esame consegnato', exact: true }),
       ).toBeVisible();
       await display.bringToFront();
-      await display.reload();
       await expect(
         display.getByText('Tutti hanno consegnato · Esame concluso'),
       ).toBeVisible();
@@ -514,7 +582,31 @@ try {
       await expect(one.getByRole('img', { name: 'Immagine domanda di prova', exact: true })).toBeVisible();
       await expect(one.getByRole('img', { name: 'Immagine risposta di prova', exact: true })).toBeVisible();
       assert.deepEqual(runtimeErrors, [], 'No browser runtime errors');
+      for (const page of [host, display, one, two]) await page.goto('about:blank');
+      await expect.poll(() => liveChannels.size).toBe(0);
+      // Exercise the unchanged Presentation host/display through the same real SDK.
+      phase = 'voting_open';
+      presentationSnapshot = { ...publicSnapshot(), mode: 'presentation', phase,
+        submitted_count: 0, total_question_count: 1, current_question_index: 0,
+        current_question: { id: 'q0', position: 1, category: 'Demo', prompt: 'Domanda Presentazione',
+          options: Array.from({ length: 4 }, (_, i) => ({ id: `q0-o${i}`, position: i + 1, text: `Scelta ${i + 1}` })) },
+        leaderboard: members.map(p => ({ nickname: p.nickname, avatar_key: p.avatarKey, rank: 1, score: 0, current_points: 0 })),
+      };
+      await host.goto(`${base}/host/ABCDEF`); await display.goto(`${base}/display/ABCDEF`);
+      await expect(display.getByText('Domanda Presentazione', { exact: true })).toBeVisible();
+      await expect(display.getByText('Risposta corretta', { exact: true })).toHaveCount(0);
+      await host.getByRole('button', { name: 'Chiudi voti', exact: true }).click();
+      await expect(display.getByText('Votazione chiusa', { exact: true })).toBeVisible();
+      await expect(display.getByText('Risposta corretta', { exact: true })).toHaveCount(0);
+      await host.getByRole('button', { name: 'Mostra risposta', exact: true }).click();
+      await expect(display.getByText('Risposta corretta', { exact: true })).toBeVisible();
+      await host.getByRole('button', { name: 'Termina quiz', exact: true }).click();
+      await expect(display.getByText('Podio finale', { exact: true })).toBeVisible();
+      assert.deepEqual(runtimeErrors, []);
+      for (const page of [host, display]) await page.goto('about:blank');
+      await expect.poll(() => liveChannels.size).toBe(0);
       for (const context of contexts) await context.close();
+      console.log('PASS Presentation: host/display open, close, reveal and final ranking via Realtime; no solution before reveal.');
       console.log(
         `PASS ${name}: host, display, two isolated players; create/start, skip/change/save, refresh/Auth loss/offline, partial submission, private correction, final state, 320px layout.`,
       );

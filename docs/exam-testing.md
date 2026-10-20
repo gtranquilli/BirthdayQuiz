@@ -92,3 +92,25 @@ Il dry-run controlla l’elenco delle migration da applicare, non esegue il SQL 
 - Verifica visiva degli screenshot mobile e risultati a 320 px.
 - La matrice manuale su Supabase/dispositivi reali e le race multi-connessione
   restano da eseguire. Nessuna migration remota, deploy o commit effettuato.
+
+## Regressione Preview Realtime e configurazione
+
+- `node --test scripts/test-lobby-realtime.mjs`: otto test locali senza database,
+  dipendenze opzionali o rete; consumer condivisi, StrictMode, riapertura durante
+  cleanup, cambio stanza, risposta HTTP tardiva, riconnessione, fasi Presentazione
+  e codice non valido. Il fake riproduce il riuso dei topic del client Supabase.
+- Il runner Chromium ora usa il vero SDK con un WebSocket Phoenix simulato:
+  avvio, Riapri, consegne e fine aggiornano host/display/player senza reload;
+  verifica un solo canale Host e nessun canale dopo unmount. Verifica inoltre
+  close/reveal/fine Presentazione su host e display, slider e layout Host a 320 px.
+- Crea partita apre un dialogo HTML non bloccante, con conferma esplicita e nessun
+  POST prima della conferma. Sostituisce `window.confirm`, che tratteneva il click
+  fino alla risposta umana. Non è una misurazione dell'INP del deployment Preview.
+- Le fixture HTTP/WebSocket non sostituiscono il collaudo del servizio Supabase
+  reale. Per questa correzione non si eseguono test SQL, dry-run remoto o migration.
+
+Esito della regressione: superati gli otto test lifecycle, il percorso completo
+Chromium (inclusa Presentazione host/display) e il percorso WebKit mobile isolato.
+Nessun errore runtime nelle pagine; nessun canale residuo dopo uscita dai contesti
+Chromium. INP e integrazione Realtime sul deployment Preview restano da rimisurare
+con il servizio reale; i test locali non certificano quel deployment.

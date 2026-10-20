@@ -468,6 +468,14 @@ Le tabelle autorevoli `game_sessions`, `game_questions`, `players` e `votes` non
 sono leggibili direttamente dai client pubblici. Non si pubblicano voti
 individuali e non si usa Presence come contatore.
 
+Il client usa uno store condiviso per client Supabase e codice stanza
+(`lobby-session-store.ts`), letto con `useSyncExternalStore`. HostRoom ed ExamHost
+possono convivere senza creare due sottoscrizioni. Tutti i callback sono registrati
+prima dell'unico `subscribe`; l'ultimo consumer rimuove listener e canale. La
+riapertura attende il cleanup e usa un topic di nuova generazione; richieste e
+callback obsoleti non possono sovrascrivere lo stato corrente. I refetch concorrenti
+vengono accorpati e lo snapshot viene riletto dopo il join del canale.
+
 Sequenza consigliata:
 
 1. creare la subscription;

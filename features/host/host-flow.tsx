@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -33,6 +34,15 @@ interface QuizSummary {
   readonly title: string;
   readonly categories: readonly QuizCategorySummary[];
   readonly presets: readonly QuizPresetSummary[];
+}
+
+interface SessionCreationInput {
+  readonly mode: 'presentation' | 'exam';
+  readonly questionCount?: number;
+  readonly quizId: string;
+  readonly presetId: string | null;
+  readonly maxPlayers: number;
+  readonly categoryConfig: readonly { categoryId: string; questionCount: number }[];
 }
 
 interface CreatedSession {
@@ -108,7 +118,7 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
     Record<string, string>
   >({});
   const [mode, setMode] = useState<'presentation' | 'exam'>('presentation');
-  const [examCount, setExamCount] = useState('');
+  const [examCount, setExamCount] = useState(1);
   const [maxPlayers, setMaxPlayers] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [createdSession, setCreatedSession] =
@@ -127,11 +137,22 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
     initiallyAuthenticated,
   );
   const [creatingSession, setCreatingSession] = useState(false);
+  const [pendingCreation, setPendingCreation] = useState<SessionCreationInput | null>(null);
+  const confirmationDialog = useRef<HTMLDialogElement>(null);
+  const creationInFlight = useRef(false);
+  useEffect(() => {
+    const dialog = confirmationDialog.current;
+    if (pendingCreation && dialog && !dialog.open) dialog.showModal();
+    else if (!pendingCreation && dialog?.open) dialog.close();
+  }, [pendingCreation]);
 
   const selectedQuiz = useMemo(
     () => quizzes.find((quiz) => quiz.id === selectedQuizId) ?? null,
     [quizzes, selectedQuizId],
   );
+
+  const maximumExamQuestions = Math.min(32767, selectedQuiz?.availableExamQuestionCount ?? 0);
+  const selectedExamCount = Math.max(1, Math.min(examCount, maximumExamQuestions));
 
   const loadQuizzes = useCallback(async () => {
     setLoadingQuizzes(true);
@@ -312,6 +333,7 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
     const presetId = quiz.presets[0]?.id ?? '';
 
     setSelectedQuizId(quiz.id);
+    setExamCount(1);
     setSelectedPresetId(presetId);
     setCategoryCounts(createCategoryCounts(quiz, presetId));
     setCreatedSession(null);
@@ -329,7 +351,7 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
     setError(null);
   }
 
-  async function handleCreateSession(event: FormEvent<HTMLFormElement>) {
+  function handleCreateSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
     setCreatedSession(null);
@@ -377,7 +399,7 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
     }
 
     if (mode === 'exam') {
-      totalQuestions = Number(examCount);
+      totalQuestions = selectedExamCount;
       if (!Number.isInteger(totalQuestions) || totalQuestions < 1 ||
           totalQuestions > Math.min(32767, selectedQuiz.availableExamQuestionCount)) {
         setError(`Inserisci da 1 a ${Math.min(32767, selectedQuiz.availableExamQuestionCount)} domande disponibili.`);
@@ -389,28 +411,21 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Creare una partita con massimo ${parsedMaxPlayers} giocatori?`,
-    );
+    setPendingCreation({ mode, questionCount: mode === 'exam' ? totalQuestions : undefined,
+      quizId: selectedQuiz.id, presetId: mode === 'exam' ? null : selectedPresetId || null,
+      maxPlayers: parsedMaxPlayers, categoryConfig });
+  }
 
-    if (!confirmed) {
-      return;
-    }
-
+  async function createConfirmedSession() {
+    if (!pendingCreation || creationInFlight.current) return;
+    creationInFlight.current = true;
     setCreatingSession(true);
 
     try {
       const response = await fetch('/api/host/game-sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode,
-          questionCount: mode === 'exam' ? totalQuestions : undefined,
-          quizId: selectedQuiz.id,
-          presetId: selectedPresetId || null,
-          maxPlayers: parsedMaxPlayers,
-          categoryConfig,
-        }),
+        body: JSON.stringify(pendingCreation),
       });
       const payload = await readJson(response);
 
@@ -454,6 +469,8 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
           : 'Impossibile creare la partita.',
       );
     } finally {
+      creationInFlight.current = false;
+      setPendingCreation(null);
       setCreatingSession(false);
     }
   }
@@ -735,40 +752,52 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
                     />
                   </label>
                 ))}
-              </fieldset> : <label className='block text-sm font-medium text-slate-800'>
-                Numero di domande (disponibili: {selectedQuiz?.availableExamQuestionCount ?? 0})
-                <input className='mt-2 block w-full rounded-lg border border-slate-300 p-3' type='number'
-                  inputMode='numeric' min={1} max={Math.min(32767, selectedQuiz?.availableExamQuestionCount ?? 0)} step={1}
-                  value={examCount} onChange={event => setExamCount(event.target.value)} disabled={creatingSession} required />
-                <span className='mt-2 block text-sm text-slate-500'>Estrazione casuale all’avvio, stesso ordine per tutti. Basta un partecipante per iniziare.</span>
-              </label>}
+              </fieldset> : <div className='space-y-3'>
+                <div className='flex flex-wrap items-baseline justify-between gap-2'>
+                  <label htmlFor='exam-question-count' className='text-sm font-medium text-slate-200'>Numero di domande</label>
+                  <output htmlFor='exam-question-count' className='text-lg font-bold text-indigo-200' aria-live='polite'>
+                    {maximumExamQuestions > 0 ? selectedExamCount : 0} / {maximumExamQuestions}
+                  </output>
+                </div>
+                <input id='exam-question-count' className='block min-h-11 w-full cursor-pointer accent-indigo-400 disabled:cursor-not-allowed'
+                  type='range' min={1} max={Math.max(1, maximumExamQuestions)} step={1}
+                  value={selectedExamCount} onChange={event => setExamCount(Number(event.target.value))}
+                  disabled={creatingSession || maximumExamQuestions === 0} aria-describedby='exam-question-help' />
+                <p id='exam-question-help' className='text-sm text-slate-300'>
+                  {maximumExamQuestions === 0 ? 'Nessuna domanda valida disponibile per questo quiz.' : 'Estrazione casuale all’avvio, stesso ordine per tutti. Basta un partecipante per iniziare.'}
+                </p>
+              </div>}
 
-              <label className='block text-sm font-medium text-slate-800'>
-                Numero massimo giocatori
+              <label className='flex flex-col gap-2 text-sm font-medium text-slate-800'>
+                <span>Numero massimo giocatori</span>
                 <input
-                  className='mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-950 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 sm:max-w-xs'
-                  type='number'
-                  inputMode='numeric'
-                  min={1}
-                  step={1}
-                  placeholder='Es. 7'
+                  className='block w-full rounded-lg border border-slate-300 px-3 py-2 text-slate-950 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 sm:max-w-xs'
+                  type='number' inputMode='numeric' min={1} step={1} placeholder='Es. 7'
                   value={maxPlayers}
-                  onChange={(event) => {
-                    setMaxPlayers(event.target.value);
-                    setCreatedSession(null);
-                  }}
-                  disabled={creatingSession}
-                  required
+                  onChange={(event) => { setMaxPlayers(event.target.value); setCreatedSession(null); }}
+                  disabled={creatingSession} required
                 />
               </label>
 
               <button
                 className='w-full rounded-lg bg-indigo-600 px-4 py-3 font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:min-w-52'
                 type='submit'
-                disabled={creatingSession}
+                disabled={creatingSession || (mode === 'exam' && maximumExamQuestions === 0)}
               >
                 {creatingSession ? 'Creazione in corso…' : 'Crea partita'}
               </button>
+              <dialog ref={confirmationDialog} aria-labelledby='create-session-title'
+                className='fixed inset-0 m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-slate-600 bg-slate-900 p-6 text-white shadow-2xl backdrop:bg-black/60'
+                onCancel={event => { if (creatingSession) event.preventDefault(); else setPendingCreation(null); }}>
+                <h2 id='create-session-title' className='text-xl font-bold'>Conferma creazione</h2>
+                <p className='mt-3'>Creare una partita con massimo {pendingCreation?.maxPlayers} giocatori?</p>
+                <p className='mt-2 text-sm text-slate-300'>{pendingCreation?.mode === 'exam' ? `Esame · ${pendingCreation.questionCount} domande` : 'Presentazione'}</p>
+                <div className='mt-6 flex flex-wrap gap-3'>
+                  <button type='button' className='min-h-11 rounded-lg border border-slate-500 px-4 py-2' disabled={creatingSession} onClick={() => setPendingCreation(null)}>Annulla</button>
+                  <button type='button' className='min-h-11 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-50' disabled={creatingSession}
+                    onClick={() => void createConfirmedSession()}>{creatingSession ? 'Creazione in corso…' : 'Conferma e crea'}</button>
+                </div>
+              </dialog>
             </form>
           )}
         </section>
