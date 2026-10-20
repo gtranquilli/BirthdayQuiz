@@ -47,6 +47,23 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
     );
   }
 
+  if (snapshot.mode === 'exam' && snapshot.phase !== 'lobby') {
+    return <main className='grid min-h-screen place-items-center overflow-x-hidden bg-slate-950 px-6 py-10 text-white'>
+      <section className='w-full max-w-5xl text-center'>
+        <p className='font-bold uppercase tracking-widest text-indigo-300'>Esame · {snapshot.code}</p>
+        <h1 className='mt-5 break-words text-4xl font-black lg:text-6xl'>{snapshot.quizTitle}</h1>
+        <p className='mt-5 text-xl text-slate-300'>{snapshot.phase === 'finished' ? 'Tutti hanno consegnato · Esame concluso' : 'Esame in corso'}</p>
+        <dl className='mt-10 grid gap-5 sm:grid-cols-3'>
+          {([['Partecipanti', snapshot.participantCount], ['Ancora in corso', snapshot.participantCount - snapshot.submittedCount],
+            ['Consegnati', snapshot.submittedCount]] as const).map(([label, count]) =>
+            <div key={label} className='rounded-3xl bg-white/5 p-8'><dt className='text-lg text-slate-300'>{label}</dt><dd className='mt-4 text-6xl font-black'>{count}</dd></div>)}
+        </dl>
+        <p className='mt-8 text-slate-400'>{connectionStatus === 'connected' ? 'Aggiornamento in tempo reale' : 'Riconnessione… i conteggi potrebbero non essere aggiornati.'}</p>
+        <button className='mt-4 rounded-xl border border-white/20 px-5 py-3' onClick={() => void refresh()}>Aggiorna</button>
+      </section>
+    </main>;
+  }
+
   if (snapshot.phase === 'finished') {
     return (
       <main className='min-h-screen bg-slate-950 px-8 py-8 text-white lg:px-16 lg:py-12'>
@@ -201,8 +218,8 @@ export function DisplayLobby({ code: rawCode }: DisplayLobbyProps) {
   }
 
   if (
-    snapshot.phase === 'voting_open' ||
-    snapshot.phase === 'voting_closed'
+    snapshot.mode === 'presentation' && (snapshot.phase === 'voting_open' ||
+    snapshot.phase === 'voting_closed')
   ) {
     const question = snapshot.currentQuestion;
 

@@ -18,6 +18,8 @@ interface CategoryConfigurationInput {
 }
 
 interface CreateGameSessionInput {
+  readonly mode: 'presentation' | 'exam';
+  readonly questionCount?: number;
   readonly quizId: string;
   readonly presetId: string | null;
   readonly maxPlayers: number;
@@ -51,8 +53,16 @@ function isUuid(value: unknown): value is string {
 }
 
 function parseInput(value: unknown): CreateGameSessionInput | null {
+  if (isRecord(value) && value.mode === 'exam') {
+    if (!isUuid(value.quizId) || typeof value.maxPlayers !== 'number' ||
+        !Number.isInteger(value.maxPlayers) || value.maxPlayers < 1 || value.maxPlayers > 2147483647 ||
+        typeof value.questionCount !== 'number' || !Number.isInteger(value.questionCount) ||
+        value.questionCount < 1 || value.questionCount > 32767) return null;
+    return { mode: 'exam', quizId: value.quizId, presetId: null, maxPlayers: value.maxPlayers,
+      questionCount: value.questionCount, categoryConfig: [] };
+  }
   if (
-    !isRecord(value) ||
+    !isRecord(value) || (value.mode !== undefined && value.mode !== 'presentation') ||
     !isUuid(value.quizId) ||
     !(value.presetId === null || isUuid(value.presetId)) ||
     typeof value.maxPlayers !== 'number' ||
@@ -93,6 +103,7 @@ function parseInput(value: unknown): CreateGameSessionInput | null {
   }
 
   return {
+    mode: 'presentation',
     quizId: value.quizId,
     presetId: value.presetId,
     maxPlayers: value.maxPlayers,
@@ -120,7 +131,7 @@ function databaseErrorResponse(code: string | undefined) {
 
   if (code === '22023' || code === 'P0002') {
     return NextResponse.json(
-      { error: 'Configurazione non valida o contenuti non disponibili.' },
+      { error: 'Configurazione non valida: controlla il numero di domande richiesto e la disponibilità del quiz.' },
       { status: 400 },
     );
   }
@@ -239,7 +250,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const admin = createAdminClient();
-    const { data, error } = await admin.rpc('create_game_session', {
+    const { data, error } = input.mode === 'exam'
+      ? await admin.rpc('create_exam_session', { p_quiz_id: input.quizId, p_max_players: input.maxPlayers, p_question_count: input.questionCount })
+      : await admin.rpc('create_game_session', {
       p_quiz_id: input.quizId,
       p_preset_id: input.presetId,
       p_max_players: input.maxPlayers,

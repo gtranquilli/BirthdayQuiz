@@ -28,6 +28,7 @@ interface QuizPresetSummary {
 }
 
 interface QuizSummary {
+  readonly availableExamQuestionCount: number;
   readonly id: string;
   readonly title: string;
   readonly categories: readonly QuizCategorySummary[];
@@ -106,6 +107,8 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
   const [categoryCounts, setCategoryCounts] = useState<
     Record<string, string>
   >({});
+  const [mode, setMode] = useState<'presentation' | 'exam'>('presentation');
+  const [examCount, setExamCount] = useState('');
   const [maxPlayers, setMaxPlayers] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [createdSession, setCreatedSession] =
@@ -353,7 +356,7 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
     }> = [];
     let totalQuestions = 0;
 
-    for (const category of selectedQuiz.categories) {
+    if (mode === 'presentation') for (const category of selectedQuiz.categories) {
       const rawCount = categoryCounts[category.id] ?? '';
       const questionCount = Number(rawCount);
 
@@ -373,6 +376,14 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
       totalQuestions += questionCount;
     }
 
+    if (mode === 'exam') {
+      totalQuestions = Number(examCount);
+      if (!Number.isInteger(totalQuestions) || totalQuestions < 1 ||
+          totalQuestions > Math.min(32767, selectedQuiz.availableExamQuestionCount)) {
+        setError(`Inserisci da 1 a ${Math.min(32767, selectedQuiz.availableExamQuestionCount)} domande disponibili.`);
+        return;
+      }
+    }
     if (totalQuestions === 0) {
       setError('Seleziona almeno una domanda complessiva.');
       return;
@@ -393,6 +404,8 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode,
+          questionCount: mode === 'exam' ? totalQuestions : undefined,
           quizId: selectedQuiz.id,
           presetId: selectedPresetId || null,
           maxPlayers: parsedMaxPlayers,
@@ -643,7 +656,13 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
               </button>
             </div>
           ) : (
-            <form className='space-y-6' onSubmit={handleCreateSession}>
+            <form className={`space-y-6 ${mode === 'exam' ? 'rounded-2xl bg-slate-950 p-5 text-white [&_label]:text-slate-200 [&_input]:bg-slate-900 [&_input]:text-white [&_select]:bg-slate-900 [&_select]:text-white [&_span]:text-slate-300' : ''}`} onSubmit={handleCreateSession}>
+              <label className='block text-sm font-medium text-slate-800'>Modalità
+                <select className='mt-2 block w-full rounded-lg border border-slate-300 p-3' value={mode}
+                  disabled={creatingSession} onChange={event => setMode(event.target.value as 'presentation' | 'exam')}>
+                  <option value='presentation'>Presentazione</option><option value='exam'>Esame</option>
+                </select>
+              </label>
               <div className='grid gap-5 sm:grid-cols-2'>
                 <label className='block text-sm font-medium text-slate-800'>
                   Quiz
@@ -661,7 +680,7 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
                   </select>
                 </label>
 
-                <label className='block text-sm font-medium text-slate-800'>
+                {mode === 'presentation' ? <label className='block text-sm font-medium text-slate-800'>
                   Preset
                   <select
                     className='mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-950 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100'
@@ -676,10 +695,10 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
                       </option>
                     ))}
                   </select>
-                </label>
+                </label> : null}
               </div>
 
-              <fieldset className='space-y-3'>
+              {mode === 'presentation' ? <fieldset className='space-y-3'>
                 <legend className='text-base font-semibold text-slate-950'>
                   Domande per categoria
                 </legend>
@@ -716,7 +735,13 @@ export function HostFlow({ initiallyAuthenticated }: HostFlowProps) {
                     />
                   </label>
                 ))}
-              </fieldset>
+              </fieldset> : <label className='block text-sm font-medium text-slate-800'>
+                Numero di domande (disponibili: {selectedQuiz?.availableExamQuestionCount ?? 0})
+                <input className='mt-2 block w-full rounded-lg border border-slate-300 p-3' type='number'
+                  inputMode='numeric' min={1} max={Math.min(32767, selectedQuiz?.availableExamQuestionCount ?? 0)} step={1}
+                  value={examCount} onChange={event => setExamCount(event.target.value)} disabled={creatingSession} required />
+                <span className='mt-2 block text-sm text-slate-500'>Estrazione casuale all’avvio, stesso ordine per tutti. Basta un partecipante per iniziare.</span>
+              </label>}
 
               <label className='block text-sm font-medium text-slate-800'>
                 Numero massimo giocatori

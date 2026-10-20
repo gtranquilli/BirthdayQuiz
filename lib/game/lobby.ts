@@ -47,6 +47,8 @@ export interface PublicRevealedGameQuestion
 }
 
 interface PublicGameSnapshotBase {
+  readonly mode: 'presentation' | 'exam';
+  readonly submittedCount: number;
   readonly code: string;
   readonly quizTitle: string;
   readonly participantCount: number;
@@ -58,6 +60,7 @@ interface PublicGameSnapshotBase {
 }
 
 export interface PublicLobbyGameSnapshot extends PublicGameSnapshotBase {
+  readonly mode: 'presentation';
   readonly phase: 'lobby';
   readonly currentQuestionIndex: null;
   readonly currentQuestion: null;
@@ -66,6 +69,7 @@ export interface PublicLobbyGameSnapshot extends PublicGameSnapshotBase {
 }
 
 export interface PublicVotingGameSnapshot extends PublicGameSnapshotBase {
+  readonly mode: 'presentation';
   readonly phase: 'voting_open' | 'voting_closed';
   readonly currentQuestionIndex: number;
   readonly currentQuestion: PublicGameQuestion;
@@ -75,6 +79,7 @@ export interface PublicVotingGameSnapshot extends PublicGameSnapshotBase {
 
 export interface PublicAnswerRevealedGameSnapshot
   extends PublicGameSnapshotBase {
+  readonly mode: 'presentation';
   readonly phase: 'answer_revealed';
   readonly currentQuestionIndex: number;
   readonly currentQuestion: PublicRevealedGameQuestion;
@@ -83,6 +88,7 @@ export interface PublicAnswerRevealedGameSnapshot
 }
 
 export interface PublicFinishedGameSnapshot extends PublicGameSnapshotBase {
+  readonly mode: 'presentation';
   readonly phase: 'finished';
   readonly currentQuestionIndex: number;
   readonly currentQuestion: null;
@@ -90,7 +96,17 @@ export interface PublicFinishedGameSnapshot extends PublicGameSnapshotBase {
   readonly nonVoters: readonly PublicLobbyPlayer[];
 }
 
+export interface PublicExamSnapshot extends PublicGameSnapshotBase {
+  readonly mode: 'exam';
+  readonly phase: 'lobby' | 'voting_open' | 'finished';
+  readonly currentQuestionIndex: null;
+  readonly currentQuestion: null;
+  readonly correctOptionId: null;
+  readonly nonVoters: readonly PublicLobbyPlayer[];
+}
+
 export type PublicGameSnapshot =
+  | PublicExamSnapshot
   | PublicLobbyGameSnapshot
   | PublicVotingGameSnapshot
   | PublicAnswerRevealedGameSnapshot
@@ -274,15 +290,15 @@ function parsePublicLeaderboard(
   return leaderboard;
 }
 
-function parsePublicQuestion(
+export function parsePublicQuestion(
   value: unknown,
   revealed: false,
 ): PublicGameQuestion | null;
-function parsePublicQuestion(
+export function parsePublicQuestion(
   value: unknown,
   revealed: true,
 ): PublicRevealedGameQuestion | null;
-function parsePublicQuestion(
+export function parsePublicQuestion(
   value: unknown,
   revealed: boolean,
 ): PublicGameQuestion | PublicRevealedGameQuestion | null {
@@ -448,6 +464,22 @@ export function parsePublicGameSnapshot(
     return null;
   }
 
+  if (value.mode === 'exam') {
+    if (!['lobby', 'voting_open', 'finished'].includes(value.phase) ||
+        value.current_question !== null || value.current_question_index !== null ||
+        value.correct_option_id !== null || value.voted_count !== 0 ||
+        !Array.isArray(value.leaderboard) || value.leaderboard.length !== 0 ||
+        !Array.isArray(value.non_voters) || value.non_voters.length !== 0 ||
+        typeof value.submitted_count !== 'number' || !Number.isInteger(value.submitted_count) ||
+        value.submitted_count < 0 || value.submitted_count > value.participant_count) return null;
+    return { mode: 'exam', code: value.code, quizTitle: value.quiz_title,
+      phase: value.phase as PublicExamSnapshot['phase'], participantCount: value.participant_count,
+      maxPlayers: value.max_players, totalQuestionCount: value.total_question_count,
+      submittedCount: value.submitted_count, votedCount: 0, players, leaderboard: [],
+      currentQuestionIndex: null, currentQuestion: null, correctOptionId: null, nonVoters: [] };
+  }
+  if (value.mode !== undefined && value.mode !== 'presentation') return null;
+
   const leaderboard = parsePublicLeaderboard(value.leaderboard, players);
 
   if (
@@ -459,6 +491,8 @@ export function parsePublicGameSnapshot(
   }
 
   const commonSnapshot = {
+    mode: 'presentation' as const,
+    submittedCount: 0,
     code: value.code,
     quizTitle: value.quiz_title,
     participantCount: value.participant_count,

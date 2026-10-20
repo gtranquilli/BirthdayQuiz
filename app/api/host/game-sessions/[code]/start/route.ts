@@ -177,7 +177,7 @@ export async function POST(
     const admin = createAdminClient();
     const sessionResult = await admin
       .from('game_sessions')
-      .select('id')
+      .select('id,mode')
       .eq('code', code)
       .maybeSingle();
 
@@ -193,6 +193,12 @@ export async function POST(
         { error: 'Stanza non trovata.' },
         { status: 404 },
       );
+    }
+
+    if (sessionResult.data.mode === 'exam') {
+      const { error } = await admin.rpc('start_exam_session', { p_game_session_id: sessionResult.data.id });
+      if (error) return databaseErrorResponse(error.code, error.message);
+      return NextResponse.json({ started: true, mode: 'exam' });
     }
 
     const { data, error } = await admin.rpc('start_game_session', {

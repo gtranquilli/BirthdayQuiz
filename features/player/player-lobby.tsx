@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ExamPlayer } from '@/features/exam/exam-player';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -132,9 +133,9 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
   }, [recoverPlayer]);
 
   const currentQuestionId =
-    snapshot?.phase === 'voting_open' ||
+    snapshot?.mode !== 'exam' && (snapshot?.phase === 'voting_open' ||
     snapshot?.phase === 'voting_closed' ||
-    snapshot?.phase === 'answer_revealed'
+    snapshot?.phase === 'answer_revealed')
       ? snapshot.currentQuestion.id
       : null;
 
@@ -273,6 +274,10 @@ export function PlayerLobby({ code: rawCode }: PlayerLobbyProps) {
         </section>
       </main>
     );
+  }
+
+  if (snapshot.mode === 'exam' && snapshot.phase !== 'lobby') {
+    return <ExamPlayer code={code} player={player} />;
   }
 
   const ownLeaderboardEntry = snapshot.leaderboard.find(

@@ -224,3 +224,21 @@ Non si tagliano snapshot di sessione, RLS, capienza atomica, fasi separate, priv
 ## Definizione di completamento
 
 L'MVP è pronto quando soddisfa tutti i criteri di `docs/requirements.md`, passa lint/typecheck/build, completa la matrice sul deploy reale e non contiene segreti. Qualsiasi editor, marketplace, gestione utenti o creazione pubblica resta lavoro successivo al 6 agosto.
+
+## Estensione Esame — 20 ottobre 2026
+
+La richiesta esplicita autorizza questo secondo flusso oltre all’MVP Presentazione.
+
+- [x] Migration additiva: modalità legacy-default, progresso/risposte private,
+  snapshot con media e ordine condiviso, guardie sulle RPC Presentazione.
+- [x] Creazione senza preset, avvio con almeno un partecipante, capienza e QR esistenti.
+- [x] Navigazione individuale, conferma/modifica/omissione, recovery con rejoin.
+- [x] Consegna idempotente, correzione privata e fine dopo tutte le consegne.
+- [x] Host con progressi e correzioni consegnate; display con soli aggregati.
+- [x] Test locali su migration complete e seed, isolamento RPC e regressione Presentazione.
+- [x] UI: flusso completo Chromium con quattro contesti e flusso mobile isolato WebKit.
+- [ ] Collaudo finale su PostgreSQL multi-connessione, Supabase Realtime e dispositivi
+  Safari iOS/Chrome Android reali, in un ambiente autorizzato con la migration applicata.
+
+La matrice riproducibile e i limiti delle prove locali sono in `docs/exam-testing.md`.
+Migration remote, deploy e commit sono esclusi da questa attività.

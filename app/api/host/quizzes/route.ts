@@ -132,7 +132,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const examCounts = await Promise.all(quizzes.map(async quiz => {
+      const result = await admin.rpc('get_exam_question_count', { p_quiz_id: quiz.id });
+      if (result.error) throw new Error('Exam catalog unavailable');
+      return [quiz.id, result.data as number] as const;
+    }));
+    const validCounts = new Map(examCounts);
     const payload = quizzes.map((quiz) => ({
+      availableExamQuestionCount: validCounts.get(quiz.id) ?? 0,
       id: quiz.id,
       title: quiz.title,
       categories: categories

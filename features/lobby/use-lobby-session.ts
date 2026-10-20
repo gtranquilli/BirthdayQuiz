@@ -44,7 +44,7 @@ export function useLobbySession(rawCode: string): LobbySessionState {
     const { data, error: queryError } = await supabase
       .from('lobby_public_sessions')
       .select(
-        'code,quiz_title,phase,participant_count,max_players,current_question_index,total_question_count,current_question,voted_count,players,correct_option_id,non_voters,leaderboard',
+        'mode,submitted_count,code,quiz_title,phase,participant_count,max_players,current_question_index,total_question_count,current_question,voted_count,players,correct_option_id,non_voters,leaderboard',
       )
       .eq('code', code)
       .maybeSingle();
@@ -121,11 +121,16 @@ export function useLobbySession(rawCode: string): LobbySessionState {
       void refresh();
     }, 0);
 
+    const handleVisible = () => { if (document.visibilityState === 'visible') void refresh(); };
+    document.addEventListener('visibilitychange', handleVisible);
+    window.addEventListener('pageshow', handleVisible);
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online', handleOnline);
 
     return () => {
       window.clearTimeout(initialRefreshId);
+      document.removeEventListener('visibilitychange', handleVisible);
+      window.removeEventListener('pageshow', handleVisible);
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
       void supabase.removeChannel(channel);

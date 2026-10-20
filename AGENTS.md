@@ -31,7 +31,20 @@ Al 4 agosto 2026 il repository non contiene ancora lo scaffold dell'applicazione
 - Dopo il reveal il display evidenzia la risposta corretta e mostra gli avatar vicino alla risposta scelta.
 - Chiusura e rivelazione sono azioni host distinte.
 - Nessuna UI di authoring, marketplace, gestione utenti o creazione pubblica dei quiz.
-- Nessun timer, chat, squadre, media, speed bonus, moderazione avanzata o storico partite.
+- Nessun timer, chat, squadre, audio/video, speed bonus, moderazione avanzata o storico partite.
+
+## Estensioni autorizzate
+
+Il supporto immagini strutturate è implementato e documentato nei requisiti.
+Dal 20 ottobre 2026 la richiesta esplicita Esame autorizza una seconda modalità:
+le regole MVP di voto/reveal/classifica si riferiscono alla Presentazione, che
+resta default per le sessioni legacy. Esame usa `lobby → voting_open → finished`,
+progresso indipendente e correzione privata soltanto dopo la consegna individuale.
+Il display Esame non espone mai domande, soluzioni, risposte o risultati. Riusa
+snapshot `game_*`, lobby, QR, avatar e rejoin, con tabelle separate per risposte
+e progresso Esame. Consultare la sezione Esame in requisiti/architettura e
+`docs/exam-testing.md`. Non applicare migration remote, deploy o commit senza
+una successiva richiesta esplicita.
 
 ## Regole architetturali
 

@@ -2,7 +2,7 @@
 
 ## 1. Contesto e confini
 
-Al 4 agosto 2026 il repository contiene soltanto documentazione: non esistono scaffold, dipendenze, migrazioni, progetto Supabase o deploy Vercel. Questa architettura guida l'implementazione da completare e collaudare entro il 6 agosto; non descrive componenti già presenti.
+La baseline del 4 agosto 2026 era solo documentale. Il repository ora contiene scaffold, migration, flusso Presentazione e media; dal 20 ottobre 2026 aggiunge Esame. Le sezioni storiche descrivono il modello concettuale; i nomi SQL autorevoli sono quelli delle migration e della sezione Esame qui sotto.
 
 Il prodotto è un Quiz Engine multiplayer riutilizzabile. “Compleanno di Giorgio” è il primo dataset caricato tramite seed. Il motore non contiene regole specifiche per quel quiz e potrà eseguire altri quiz conformi allo stesso modello senza modifiche alla logica applicativa.
 
@@ -514,3 +514,93 @@ L'MVP usa `HOST_ACCESS_PASSWORD` e un cookie firmato con `HOST_SESSION_SECRET`. 
 | Voti visibili in anticipo | RLS, nessun Realtime su `votes`, endpoint risultati vincolato alla fase |
 | Realtime perde un evento | Snapshot iniziale e refetch alla riconnessione |
 | Scope eccessivo | Contenuti solo seed, nessun editor, marketplace o account utente |
+
+## 13. Esame — implementazione e confini del 20 ottobre 2026
+
+### Schema reale e separazione
+
+`game_sessions` aggiunge `mode text NOT NULL DEFAULT 'presentation'` e
+`exam_question_count`. Il quiz usa `source_quiz_id`; il preset è `source_preset_id`
+(null in Esame), con `preset_name = 'Esame'` come etichetta, senza creare un preset.
+Nessuna migration applicata viene modificata.
+
+Si riusano `game_questions(game_session_id, source_question_id, position, prompt,
+points, category_name, image_*)`, `game_answer_options(game_question_id,
+source_answer_option_id, position, label, image_*)` e
+`game_question_solutions(game_question_id, correct_game_answer_option_id)`.
+Sono i nomi effettivi corrispondenti ai `session_*` concettuali delle sezioni
+storiche. La configurazione Presentazione usa `game_session_category_config`.
+
+`exam_progress` lega `player_id` e `game_session_id` mediante FK composta; conserva
+`last_index` (zero-based), `submitted_at` e `result` JSON con statistiche/punti.
+`submitted_at IS NOT NULL` rappresenta lo stato submitted, evitando due flag
+ridondanti. `exam_answers` conserva una risposta confermata per player/domanda;
+FK composte validano player-sessione, domanda-sessione e opzione-domanda.
+`players.auth_user_id` può cambiare durante rejoin: risposte/progresso restano
+legati a `players.id`. I punteggi Esame non entrano in `players.total_score` o
+`votes`, preservando scoring e ranking Presentazione.
+
+### RPC e transazioni
+
+- Solo service role: `get_exam_question_count(uuid)`,
+  `create_exam_session(uuid, integer, integer)`, `start_exam_session(uuid)` e
+  `get_host_exam_progress(text, uuid DEFAULT NULL)`.
+- Solo authenticated con `auth.uid()`: `get_my_exam_progress(text)`,
+  `save_exam_progress(text, integer, uuid DEFAULT NULL, uuid DEFAULT NULL)` e
+  `submit_exam(text)`. Nessuna RPC personale accetta un player ID dal chiamante.
+- La funzione privata `private.exam_player_snapshot(uuid)` costruisce il payload
+  personale. La soluzione compare soltanto se il player ha `submitted_at`; il
+  ruolo service non può invocare direttamente questa funzione.
+
+Avvio, save e submit acquisiscono prima il lock della sessione, poi il progresso;
+join/rejoin usano già lo stesso lock di sessione. Ciò serializza anche l’ultimo
+submit e i salvataggi concorrenti. Il recovery prende un lock condiviso e legge
+uno snapshot coerente. L’avvio acquisisce lock condivisi sui contenuti per evitare
+copie miste durante modifiche host a testo/media/opzioni/soluzioni. `ORDER BY
+random()` estrae senza ripetizioni e salva l’ordine una sola volta. Retry di avvio
+non risorteggiano. I vincoli esistenti convalidano quattro opzioni e una soluzione.
+
+Esame conserva le fasi esistenti (`lobby → voting_open → finished`), evitando un
+nuovo enum. Il puntatore interno `current_game_question_id` resta sulla prima
+copia per rispettare i vincoli legacy; non rappresenta il progresso personale e
+non viene mai pubblicato per Esame. Le RPC Presentazione ricevono una guardia
+DB sulla modalità senza cambiare firma, grant o algoritmo. Un constraint vieta
+`voting_closed` e `answer_revealed` alle sessioni Esame.
+
+Il submit calcola una volta sullo snapshot: corrette/totale per la percentuale,
+punti congelati per ogni corretta, zero per omissioni/errori. `result` e timestamp
+sono scritti insieme. Le chiamate successive restituiscono lo stesso risultato;
+qualsiasi modifica successiva tramite save fallisce.
+
+### Sicurezza e proiezione
+
+RLS è abilitata sulle nuove tabelle senza policy client: tutte le letture e
+scritture passano dalle RPC con `search_path = ''` e grant espliciti. Nessuna
+nuova tabella viene aggiunta alla pubblicazione Realtime. La sola
+`lobby_public_sessions` riceve `mode` e `submitted_count`; il ramo Esame della
+funzione di refresh esclude domanda corrente, soluzioni, voti, leaderboard e
+progressi individuali, anche dopo la fine. Nickname/avatar restano quelli della
+lobby. Ogni salvataggio aggiorna questa proiezione sicura come segnale Realtime
+per l’host, che rilegge i progressi attraverso l’API protetta.
+
+`GET /api/host/game-sessions/[code]/exam` verifica il cookie host HttpOnly e
+restituisce progressi senza risposte. Con `?playerId=UUID` restituisce soltanto
+una correzione già consegnata della stessa stanza. Risposte HTTP `private,
+no-store`; credenziali service esclusivamente server-side. Creazione e avvio
+usano gli endpoint host esistenti, che scelgono la RPC dalla modalità validata
+(creazione) o letta dal database (avvio). Le RPC personali passano dal client
+Supabase autenticato senza introdurre endpoint privilegiati per i player.
+
+### Componenti e recovery
+
+`ExamPlayer`, `ExamResults` e `ExamHost` separano il flusso Esame. Parser e tipi
+sono in `lib/game/exam.ts`; la proiezione pubblica è una union discriminata per
+modalità. `QuizMediaImage`, `AvatarBadge`, lobby, QR e rejoin sono condivisi.
+Il renderer dei risultati è riusato dalla vista personale e dall’host.
+
+Conferma e navigazione usano una guardia in-flight sincrona nel browser; il lock
+DB resta autorevole. La bozza è locale ed esplicitamente non salvata, mentre la
+posizione si aggiorna via RPC. Il ritorno online/visibile e `pageshow` recuperano
+il progresso, con il rejoin token già esistente quando necessario. Le risposte
+prima della consegna non contengono soluzione o risultato; la sola fase globale
+`finished` non autorizza mai una correzione personale.

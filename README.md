@@ -20,6 +20,33 @@ Le superfici partecipante usano lo stesso tema dark del display; durante il voto
 il display mostra un indicatore aggregato a pallini e, a fine partita, un podio
 compatibile con i pari merito e commenti personali deterministici sui telefoni.
 
+## Modalità Esame
+
+In `/host` si sceglie **Presentazione** (default, incluse le sessioni legacy) oppure
+**Esame**. Per Esame bastano quiz, numero di domande valide e capienza obbligatoria
+confermata; non serve un preset. Con almeno un partecipante l’host avvia il test:
+N domande casuali senza duplicati vengono congelate atomicamente, con identico
+ordine per tutti e opzioni A–D nell’ordine sorgente.
+
+Ogni partecipante naviga liberamente, salta domande e modifica le risposte fino
+alla consegna. Solo **Conferma e continua** / **Conferma risposta** salvano la scelta;
+la navigazione salva la posizione senza confermare la bozza. Deselezionare e
+confermare rende la domanda omessa. **Termina esame** apre il riepilogo con conferma
+definitiva; le omissioni sono ammesse. La consegna è idempotente e restituisce
+subito correzione e risultato personali. Refresh e rejoin con nuova Auth
+recuperano lo stesso player, il progresso e l’eventuale risultato.
+
+L’host vede progressi e, dopo ogni consegna, punti e correzione del relativo player.
+Il display conserva la lobby/QR; durante e dopo l’esame mostra soltanto stato e
+conteggi aggregati. Nessuna domanda, soluzione, risposta o classifica viene
+pubblicata. L’ultima consegna conclude la stanza. Non sono previsti chiusura
+forzata o consegna automatica degli assenti.
+
+La migration additiva `20261020000000_add_exam_mode.sql` deve precedere questa
+versione applicativa. Le migration precedenti restano inalterate. Per questa
+modifica è previsto soltanto `npx supabase db push --linked --dry-run`, senza
+applicare migration remote, deploy o commit.
+
 ## MVP
 
 - Contenuti gerarchici: quiz → categorie → domande → risposte.
@@ -36,12 +63,11 @@ compatibile con i pari merito e commenti personali deterministici sui telefoni.
 - Recovery dopo refresh, breve disconnessione o perdita della sessione Auth,
   senza creare un secondo player né modificare voti e punteggio.
 
-Restano fuori scope editor completo, marketplace, gestione utenti, creazione pubblica dei quiz, timer, squadre, chat, media, speed bonus, moderazione avanzata e storico partite.
-Il prossimo blocco architetturale previsto è il supporto immagini per domande e
-risposte; il motore ora lo implementa tramite Supabase Storage e snapshot
+Restano fuori scope editor completo, marketplace, gestione utenti, creazione pubblica dei quiz, timer, squadre, chat, audio/video, speed bonus, moderazione avanzata e storico partite.
+Il supporto immagini per domande e risposte è implementato tramite Supabase Storage e snapshot
 immutabili, senza URL arbitrari nei contenuti.
 
-## Flusso della sessione
+## Flusso della sessione Presentazione
 
 1. L'host sceglie quiz e preset e adatta i conteggi per categoria.
 2. Inserisce il massimo giocatori e conferma la creazione.
@@ -133,3 +159,10 @@ Per nuovi contenuti è consigliato WebP sotto 1 MB: circa 1600×900 per domande 
 La partita congela percorso, alt text e dimensioni all'avvio. Se un file non è
 più disponibile, le UI mostrano un fallback con il testo alternativo senza
 bloccare voto, reveal o avanzamento.
+
+## Verifica Esame
+
+Oltre a lint, typecheck, build e `git diff --check`, sono disponibili test locali
+senza credenziali remote: `scripts/test-exam-database.mjs` (PGlite) e
+`scripts/test-exam-browser.mjs` (Chromium/WebKit con fixture HTTP).
+Installazione, limiti e matrice manuale: [collaudo Esame](docs/exam-testing.md).

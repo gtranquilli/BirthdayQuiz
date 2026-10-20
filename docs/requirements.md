@@ -206,7 +206,7 @@ Una modifica successiva a quiz, categorie, domande, risposte o preset non deve c
   della domanda corrente può avere priorità.
 - Un file mancante o lento non blocca la partita e mostra alt text/fallback.
 
-## 7. Macchina a stati
+## 7. Macchina a stati — Presentazione
 
 | Fase | Display | Partecipante | Azione host valida |
 | --- | --- | --- | --- |
@@ -301,3 +301,54 @@ L'MVP è accettato quando, sul deploy Vercel collegato a Supabase:
 12. refresh e breve disconnessione ricostruiscono lo stato senza duplicazioni;
 13. l'ultima domanda porta a una classifica finale stabile;
 14. lint, typecheck e build di produzione terminano con successo.
+
+## 11. Estensione del 20 ottobre 2026 — modalità Esame
+
+Questa estensione è autorizzata dalla richiesta Esame e non cambia i requisiti
+RF-01–RF-13 della Presentazione. Le regole globali di reveal, classifica e
+avanzamento host delle sezioni precedenti si applicano alla Presentazione;
+per Esame valgono le eccezioni esplicite seguenti.
+
+- `mode` è `presentation` per default, anche per le righe legacy; `exam` identifica
+  il flusso indipendente. L’host sceglie quiz, quantità intera 1–numero di domande
+  valide (limite tecnico 32767 dello snapshot) e capienza positiva senza default.
+  La capienza deve essere confermata; Esame non richiede né modifica preset.
+- Creazione e avvio verificano la disponibilità. All’avvio con almeno un player,
+  una transazione estrae casualmente N domande complete fra tutte le categorie,
+  senza ripetizioni; copia testo, immagini/metadati, punteggio, quattro opzioni e
+  soluzione. Tutti ricevono identici contenuti e ordine; A–D conservano le posizioni
+  sorgente. Un errore annulla interamente l’avvio.
+- La macchina Esame è `lobby → voting_open → finished`: `voting_open` significa
+  test in corso. Non esistono domanda corrente condivisa, close, reveal o advance
+  pubblici. Nuovi ingressi sono vietati dopo la lobby; il rejoin resta consentito
+  anche dopo la fine e non duplica il player o la capienza.
+- `/play/[code]` mostra indice, testo/media, quattro opzioni, scelta salvata o
+  bozza, completate/mancanti, barra e griglia navigabili. Indietro e Salta non
+  confermano una bozza; Conferma salva e può avanzare. Cambiare e confermare
+  sovrascrive la risposta precedente. Le omissioni sono ammesse, anche tramite
+  Deseleziona e successiva conferma. Le bozze non sono autorevoli né garantite
+  dopo refresh/chiusura; la UI avverte quando si abbandona una bozza.
+- Ogni salvataggio e navigazione confermati persistono nel database. Il recupero
+  usa il player stabile, non l’ID Auth, per risposte, posizione, consegna e risultato.
+  Safari in background, ritorno online, refresh e rejoin ricaricano lo snapshot.
+- L’ultima domanda offre Termina esame. La conferma riporta «Stai per consegnare
+  definitivamente il test. Dopo la consegna non potrai più modificare le risposte.»
+  e mostra risposte date/mancanti e ritorno alla revisione. Le bozze non vengono
+  incluse implicitamente. La transazione registra `submitted_at`, risultato e
+  blocco definitivo; retry e doppio invio restituiscono lo stesso risultato.
+- Dopo la consegna il player vede totale, corrette, errate, omesse, percentuale
+  corrette sul totale (omesse incluse), punti e tutte le domande con testo/media,
+  opzioni, propria scelta e soluzione. Giusta vale i punti congelati; errata e
+  omessa valgono zero. La correzione resta privata anche dopo `finished`.
+- L’host autorizzato vede nickname/avatar, completate e stato; punti e correzione
+  sono accessibili solo dopo la consegna individuale. Le consegne sono indipendenti;
+  solo quando tutti i player hanno consegnato la stanza passa a `finished`.
+- Il display mantiene QR e lobby esistenti; dopo l’avvio mostra nome, totale,
+  ancora in corso, consegnati e stato. La proiezione pubblica non contiene domande,
+  soluzioni, risposte, progressi individuali o punteggi in alcuna fase Esame.
+- UI Esame dark, mobile da 320 px, niente scroll orizzontale o animazioni complesse;
+  errori, attesa, offline, salvataggio e mancata conferma hanno indicatori testuali.
+
+Criteri di accettazione: tutti gli scenari in `docs/exam-testing.md`, compresa la
+regressione Presentazione e la verifica multi-connessione dei lock su PostgreSQL.
+Nessuna migration remota, deploy o commit è parte di questa implementazione.

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { ExamHost } from '@/features/exam/exam-host';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -419,6 +420,8 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
     );
   }
 
+  if (snapshot?.mode === 'exam' && snapshot.phase !== 'lobby') return <ExamHost code={code} />;
+
   const effectivePhase = snapshot?.phase ?? session.phase;
   const isLobby = effectivePhase === 'lobby';
   const currentQuestion = snapshot?.currentQuestion ?? null;
@@ -525,7 +528,7 @@ export function HostRoom({ code: rawCode }: HostRoomProps) {
               onClick={() => void startGame()}
               disabled={participantCount < 1 || starting}
             >
-              {starting ? 'Avvio in corso…' : 'Avvia quiz'}
+              {starting ? 'Avvio in corso…' : snapshot?.mode === 'exam' ? 'Avvia esame' : 'Avvia quiz'}
             </button>
           ) : null}
           {effectivePhase === 'voting_open' ? (
